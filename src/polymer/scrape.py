@@ -296,7 +296,7 @@ async def download_orders() -> None:
             async with aiometer.amap(
                 _download,
                 downloadable,
-                max_at_once=1,  # Limit maximum number of concurrently running tasks.
+                max_at_once=3,  # Limit maximum number of concurrently running tasks.
                 max_per_second=0.5,  # Limit request rate to not overload the server.
             ) as results:
                 async for result in results:
