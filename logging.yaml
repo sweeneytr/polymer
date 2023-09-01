@@ -1,0 +1,17 @@
+version: 1
+
+handlers:
+    console:
+        class: logging.StreamHandler
+        level: DEBUG
+        stream: ext://sys.stdout
+
+loggers:
+    uvicorn:
+        level: INFO
+    polymer:
+        level: INFO
+
+root:
+    level: WARN
+    handlers: [console]
