@@ -20,7 +20,7 @@ class Asset(Base):
     cents: Mapped[int]
     download_url: Mapped[str | None]
     yanked: Mapped[bool]
-    downloaded: Mapped[bool] = False
+    downloaded: Mapped[bool]
 
     @hybrid_property
     def free(self) -> bool:

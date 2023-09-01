@@ -216,6 +216,7 @@ def asset_from_cults(data) -> Asset:
         description=data["description"],
         cents=data["price"]["cents"],
         creator=data["creator"]["nick"],
+        downloaded=False,
     )
 
 
