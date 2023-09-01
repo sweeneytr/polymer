@@ -5,5 +5,5 @@ settings = Settings(
     password="qj*T44viB1exY5ET",
     nickname="calcifer242",
     apikey="z2TNkBjluSamUQtdO7R19hkPo",
-    download_dir='./tmp'
+    download_dir="./tmp",
 )

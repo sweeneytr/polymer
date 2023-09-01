@@ -35,6 +35,7 @@ class AssetModel(BaseModel):
     cents: int
     download_url: str | None
     yanked: bool
+    downloaded: bool
 
     @computed_field
     @cached_property

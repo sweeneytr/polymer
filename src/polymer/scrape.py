@@ -2,17 +2,18 @@
 
 from itertools import count
 from logging import getLogger
-from typing import Any
 from pathlib import Path
+from typing import Any
+
 import aiometer
 import httpx
+import pyrfc6266
 from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .orm import Asset, engine
-import pyrfc6266
 
 logger = getLogger(__name__)
 
@@ -62,6 +63,7 @@ query LikedCreations($offset: Int, $limit: Int) {
     }
 }
 """
+
 
 def _get_csrf(html: BeautifulSoup) -> str:
     return html.find("meta", {"name": "csrf-token"})["content"]
@@ -160,10 +162,15 @@ class CultsClient(CultsInfra):
         )
 
     async def _download_order(self, slug: str, download_url: str) -> None:
-        async with self.client.stream('GET', download_url, follow_redirects=True) as response:
-            filename = pyrfc6266.parse_filename(response.headers['Content-Disposition'])
-            logger.info(f"Nabbing {filename}")
-            with Path(settings.download_dir).joinpath(slug, filename).open('wb') as f:
+        async with self.client.stream(
+            "GET", download_url, follow_redirects=True
+        ) as response:
+            filename = pyrfc6266.parse_filename(response.headers["Content-Disposition"])
+
+            dest = Path(settings.download_dir).joinpath(slug, filename)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+
+            with dest.open("wb") as f:
                 async for chunk in response.aiter_bytes():
                     f.write(chunk)
 
@@ -200,6 +207,7 @@ class CultsClient(CultsInfra):
 
         return _result
 
+
 def asset_from_cults(data) -> Asset:
     return Asset(
         name=data["name"],
@@ -209,6 +217,7 @@ def asset_from_cults(data) -> Asset:
         cents=data["price"]["cents"],
         creator=data["creator"]["nick"],
     )
+
 
 async def fetch_liked() -> None:
     with Session(engine) as session:
@@ -255,20 +264,29 @@ async def fetch_orders() -> None:
                         select(Asset).filter_by(slug=slug)
                     ).scalar_one_or_none()
                     if asset is None:
-                        asset = asset_from_cults(line['creation'])
+                        asset = asset_from_cults(line["creation"])
                         asset.yanked = True
                         session.add(asset)
                     asset.download_url = line["downloadUrl"]
         session.commit()
 
 
-
 async def download_orders() -> None:
     with Session(engine) as session:
+        downloadable = (
+            session.execute(
+                select(Asset).where(
+                    Asset.download_url.is_not(None),
+                    Asset.downloaded == False,
+                )
+            )
+            .scalars()
+            .all()
+        )
+
         async with httpx.AsyncClient() as http_client:
             client = CultsClient(http_client)
             await client.login()
-            downloadable = session.execute(select(Asset).where(Asset.download_url.is_not(None))).scalars().all()
 
             async def _download(creation: Asset) -> Asset:
                 await client._download_order(creation.slug, creation.download_url)
@@ -282,5 +300,4 @@ async def download_orders() -> None:
             ) as results:
                 async for result in results:
                     result.downloaded = True
-
-    session.commit()
+                    session.commit()
