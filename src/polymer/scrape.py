@@ -257,7 +257,6 @@ async def fetch_orders() -> None:
                         asset = asset_from_cults(line['creation'])
                         asset.yanked = True
                         session.add(asset)
-                        breakpoint()
                     asset.download_url = line["downloadUrl"]
         session.commit()
 
