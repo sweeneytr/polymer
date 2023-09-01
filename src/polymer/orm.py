@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
+from datetime import datetime
 
 class Base(DeclarativeBase):
     pass
@@ -17,7 +17,9 @@ class Asset(Base):
     slug: Mapped[str]
     cents: Mapped[int]
     download_url: Mapped[str | None]
-    yanked: Mapped[bool] = False
+    yanked: Mapped[bool]
+    downloaded: Mapped[bool] = False
+
 
     @hybrid_property
     def free(self) -> bool:

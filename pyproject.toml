@@ -9,7 +9,6 @@ readme = "README.md"
 python = "^3.11"
 bs4 = "^0.0.1"
 rich = "^13.5.2"
-typer = "^0.9.0"
 httpx = "^0.24.1"
 sqlalchemy = "^2.0.20"
 fastapi = {extras = ["all"], version = "^0.103.0"}
@@ -17,6 +16,7 @@ pydantic-settings = "^2.0.3"
 pydantic = "^2.3.0"
 aiocron = "^1.8"
 aiometer = "^0.4.0"
+pyrfc6266 = "^1.0.2"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 
-import asyncio
 from itertools import count
 from logging import getLogger
 from typing import Any
-
+from pathlib import Path
 import aiometer
 import httpx
-import typer
 from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .orm import Asset, engine
+import pyrfc6266
 
 logger = getLogger(__name__)
 
@@ -63,10 +62,6 @@ query LikedCreations($offset: Int, $limit: Int) {
     }
 }
 """
-
-# with html strings in the loop, seeing locals blows out tracebacks
-app = typer.Typer(pretty_exceptions_show_locals=False, pretty_exceptions_short=True)
-
 
 def _get_csrf(html: BeautifulSoup) -> str:
     return html.find("meta", {"name": "csrf-token"})["content"]
@@ -164,8 +159,13 @@ class CultsClient(CultsInfra):
             follow_redirects=True,
         )
 
-    async def _download_order(self, order: str, creation: str) -> None:
-        await self.client.get(f"https://cults3d.com/en/free_orders")
+    async def _download_order(self, slug: str, download_url: str) -> None:
+        async with self.client.stream('GET', download_url, follow_redirects=True) as response:
+            filename = pyrfc6266.parse_filename(response.headers['Content-Disposition'])
+            logger.info(f"Nabbing {filename}")
+            with Path(settings.download_dir).joinpath(slug, filename).open('wb') as f:
+                async for chunk in response.aiter_bytes():
+                    f.write(chunk)
 
     async def _get_orders(self) -> list:
         _result = []
@@ -221,6 +221,7 @@ async def fetch_liked() -> None:
                 ).scalar_one_or_none()
                 if pre is None:
                     asset = asset_from_cults(creation)
+                    asset.yanked = False
                     session.add(asset)
         session.commit()
 
@@ -236,7 +237,7 @@ async def order_liked_free() -> None:
                 lambda creation: client._free_order(creation.slug),
                 liked,
                 max_at_once=1,  # Limit maximum number of concurrently running tasks.
-                max_per_second=3,  # Limit request rate to not overload the server.
+                max_per_second=0.5,  # Limit request rate to not overload the server.
             ):
                 pass
 
@@ -262,10 +263,24 @@ async def fetch_orders() -> None:
 
 
 
-@app.command()
-def main() -> None:
-    asyncio.run(fetch_liked())
+async def download_orders() -> None:
+    with Session(engine) as session:
+        async with httpx.AsyncClient() as http_client:
+            client = CultsClient(http_client)
+            await client.login()
+            downloadable = session.execute(select(Asset).where(Asset.download_url.is_not(None))).scalars().all()
 
+            async def _download(creation: Asset) -> Asset:
+                await client._download_order(creation.slug, creation.download_url)
+                return creation
 
-if __name__ == "__main__":
-    app()
+            async with aiometer.amap(
+                _download,
+                downloadable,
+                max_at_once=1,  # Limit maximum number of concurrently running tasks.
+                max_per_second=0.5,  # Limit request rate to not overload the server.
+            ) as results:
+                async for result in results:
+                    result.downloaded = True
+
+    session.commit()

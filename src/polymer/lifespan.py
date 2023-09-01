@@ -5,7 +5,7 @@ import aiocron
 from fastapi import FastAPI
 import time
 from logging import getLogger
-from .scrape import fetch_liked, fetch_orders, order_liked_free
+from .scrape import fetch_liked, fetch_orders, order_liked_free, download_orders
 from functools import wraps
 logger = getLogger(__name__)
 
@@ -32,5 +32,6 @@ async def lifespan(app: FastAPI) -> None:
     cron1 = aiocron.crontab(cron_minutely, time_and_log(fetch_liked))
     cron2 = aiocron.crontab(cron_minutely, time_and_log(order_liked_free))
     cron3 = aiocron.crontab(cron_minutely, time_and_log(fetch_orders))
+    cron3 = aiocron.crontab(cron_minutely, time_and_log(download_orders))
 
     yield

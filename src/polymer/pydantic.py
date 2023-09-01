@@ -6,3 +6,4 @@ class Settings(BaseSettings):
     password: str
     nickname: str
     apikey: str
+    download_dir: str
