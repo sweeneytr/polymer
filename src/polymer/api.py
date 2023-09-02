@@ -59,13 +59,27 @@ async def asset_list(
     _end: int = 10,
     _order: str = "ASC",
     _sort: str = "id",
+    yanked: bool | None = None,
+    downloaded: bool | None = None,
+    free: bool | None = None,
 ) -> list[AssetModel]:
     with Session(engine) as session:
         sort_field = getattr(Asset, _sort)
-        count = session.execute(select(func.count()).select_from(Asset)).scalar_one()
+        stmt = select(Asset)
+        
+        if yanked is not None:
+            stmt = stmt.filter_by(yanked=yanked)
+        
+        if downloaded is not None:
+            stmt = stmt.filter_by(downloaded=downloaded)
+        
+        if free is not None:
+            stmt = stmt.filter_by(free=free)
+
+        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
         assets = (
             session.execute(
-                select(Asset)
+                stmt
                 .offset(_start)
                 .limit(_end)
                 .order_by(
