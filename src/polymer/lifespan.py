@@ -1,7 +1,10 @@
+import asyncio
 import time
-from asyncio import create_task
+from asyncio import Task, create_task
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from functools import wraps
+from dataclasses import dataclass
+from functools import partial, wraps
 from logging import getLogger
 
 import aiocron
@@ -25,21 +28,43 @@ def time_and_log(f) -> None:
     return wrapped
 
 
+@dataclass
+class State:
+    current: Task | None = None
+
+
+tasks: dict[Callable, Task] = {}
+
+
+def regulator(f) -> None:
+    @wraps(f)
+    async def wrapped(*args, **kwargs):
+        if f in tasks:
+            logger.warning(f"Skipping {f.__qualname__}, double scheduled")
+            return f
+
+        tasks[f] = create_task(f(*args, **kwargs))
+        await tasks[f]
+        tasks.pop(f)
+
+    return wrapped
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
-    startup_tasks = set()
+    startup_tasks: set[Task] = set()
 
     def startup_task(f):
-        task = create_task(time_and_log(f)())
+        task = create_task(regulator(time_and_log(f))())
         startup_tasks.add(task)
         task.add_done_callback(startup_tasks.discard)
 
-    startup_task(fetch_liked)
-    startup_task(download_orders)
+    startup_tasks |= {startup_task(f) for f in (fetch_liked, download_orders)}
 
     cron_minutely = "* * * * *"
-    # cron1 = aiocron.crontab(cron_minutely, time_and_log(fetch_liked))
-    # cron2 = aiocron.crontab(cron_minutely, time_and_log(order_liked_free))
-    cron3 = aiocron.crontab(cron_minutely, time_and_log(fetch_orders))
+    crons = {
+        aiocron.crontab(cron_minutely, regulator(time_and_log(f)))
+        for f in (fetch_liked, order_liked_free, fetch_orders)
+    }
 
     yield

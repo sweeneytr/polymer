@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .orm import Asset, engine
+from .orm import Asset, Download, engine
 
 logger = getLogger(__name__)
 
@@ -174,6 +174,8 @@ class CultsClient(CultsInfra):
                 async for chunk in response.aiter_bytes():
                     f.write(chunk)
 
+        return filename
+
     async def _get_orders(self) -> list:
         _result = []
         limit = 100
@@ -216,7 +218,6 @@ def asset_from_cults(data) -> Asset:
         description=data["description"],
         cents=data["price"]["cents"],
         creator=data["creator"]["nick"],
-        downloaded=False,
     )
 
 
@@ -241,7 +242,11 @@ async def order_liked_free() -> None:
         async with httpx.AsyncClient() as http_client:
             client = CultsClient(http_client)
             await client.login()
-            liked = session.execute(select(Asset).filter_by(free=True)).scalars().all()
+            liked = (
+                session.execute(select(Asset).filter_by(free=True, downloaded=False))
+                .scalars()
+                .all()
+            )
 
             async with aiometer.amap(
                 lambda creation: client._free_order(creation.slug),
@@ -290,7 +295,12 @@ async def download_orders() -> None:
             await client.login()
 
             async def _download(creation: Asset) -> Asset:
-                await client._download_order(creation.slug, creation.download_url)
+                filename = await client._download_order(
+                    creation.slug, creation.download_url
+                )
+                creation.downloads.append(Download(filename=filename))
+
+                session.commit()
                 return creation
 
             async with aiometer.amap(
@@ -299,6 +309,4 @@ async def download_orders() -> None:
                 max_at_once=3,  # Limit maximum number of concurrently running tasks.
                 max_per_second=0.5,  # Limit request rate to not overload the server.
             ) as results:
-                async for result in results:
-                    result.downloaded = True
-                    session.commit()
+                pass
