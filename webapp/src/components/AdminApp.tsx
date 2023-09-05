@@ -1,12 +1,12 @@
 "use client"; // only needed if you choose App Router
-import { Admin, Resource, ListGuesser, EditGuesser, BooleanInput, UrlField } from "react-admin";
+import { Admin, Resource, ListGuesser, EditGuesser, BooleanInput, UrlField, SearchInput } from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
 import { BooleanField, Datagrid, List, NumberField, TextField } from 'react-admin';
 
 const dataProvider = jsonServerProvider("http://localhost:8000");
 
-const filters = [
-  // <TextInput label="Search" source="q" alwaysOn />,
+const assetFilters = [
+  <SearchInput source="q" alwaysOn />,
   <BooleanInput source="yanked" />,
   <BooleanInput source="downloaded" />,
   <BooleanInput source="free" />,
@@ -15,7 +15,7 @@ const filters = [
 
 
 export const AssetList = () => (
-    <List filters={filters}>
+    <List filters={assetFilters}>
         <Datagrid rowClick="edit">
             <TextField source="id" />
             <TextField source="slug" />
@@ -33,12 +33,29 @@ export const AssetList = () => (
     </List>
 );
 
+const tagFilters = [
+  <SearchInput source="q" alwaysOn />
+];
+export const TagList = () => (
+  <List filters={tagFilters}>
+      <Datagrid rowClick="edit">
+          <TextField source="id" />
+          <TextField source="label" />
+      </Datagrid>
+  </List>
+);
+
 const AdminApp = () => (
   <Admin dataProvider={dataProvider}>
     <Resource
       name="assets"
       list={AssetList}
       recordRepresentation="name"
+    />
+    <Resource
+      name="tags"
+      list={TagList}
+      recordRepresentation="label"
     />
   </Admin>
 );

@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .orm import Asset, Download, engine
+from .orm import Asset, Download, engine, Tag
 
 logger = getLogger(__name__)
 
@@ -168,6 +168,9 @@ class CultsClient(CultsInfra):
             filename = pyrfc6266.parse_filename(response.headers["Content-Disposition"])
 
             dest = Path(settings.download_dir).joinpath(slug, filename)
+            if dest.exists():
+                return filename 
+            
             dest.parent.mkdir(parents=True, exist_ok=True)
 
             with dest.open("wb") as f:
@@ -210,7 +213,22 @@ class CultsClient(CultsInfra):
         return _result
 
 
-def asset_from_cults(data) -> Asset:
+def asset_from_cults(session: Session, data) -> Asset:
+    asset_ = session.execute(select(Asset).filter_by(slug=data['slug'])).scalar_one_or_none()
+
+    if asset_:
+        return asset_
+
+    tags = []
+    for label in data['tags']:
+        tag_ = session.execute(select(Tag).filter_by(label=label)).scalar_one_or_none()
+        if tag_:
+            tags.append(tag_)
+        else:
+            tag_ = Tag(label=label)
+            session.add(tag_)
+            tags.append(tag_)
+
     return Asset(
         name=data["name"],
         slug=data["slug"],
@@ -218,6 +236,7 @@ def asset_from_cults(data) -> Asset:
         description=data["description"],
         cents=data["price"]["cents"],
         creator=data["creator"]["nick"],
+        tags=tags
     )
 
 
@@ -231,7 +250,7 @@ async def fetch_liked() -> None:
                     select(Asset).filter_by(slug=creation["slug"])
                 ).scalar_one_or_none()
                 if pre is None:
-                    asset = asset_from_cults(creation)
+                    asset = asset_from_cults(session, creation)
                     asset.yanked = False
                     session.add(asset)
         session.commit()
@@ -270,7 +289,7 @@ async def fetch_orders() -> None:
                         select(Asset).filter_by(slug=slug)
                     ).scalar_one_or_none()
                     if asset is None:
-                        asset = asset_from_cults(line["creation"])
+                        asset = asset_from_cults(session, line["creation"])
                         asset.yanked = True
                         session.add(asset)
                     asset.download_url = line["downloadUrl"]
