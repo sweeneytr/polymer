@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from sqlalchemy import (Boolean, ColumnElement, ForeignKey, create_engine,
-                        type_coerce, Table, Column)
+from sqlalchemy import (Boolean, Column, ColumnElement, ForeignKey, Table,
+                        create_engine, type_coerce)
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -9,12 +9,14 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 class Base(DeclarativeBase):
     pass
 
+
 tag_association_table = Table(
     "tag_association_table",
     Base.metadata,
     Column("asset_id", ForeignKey("asset.id")),
     Column("tag_id", ForeignKey("tag.id")),
 )
+
 
 class Asset(Base):
     __tablename__ = "asset"
@@ -32,7 +34,9 @@ class Asset(Base):
         back_populates="asset", cascade="all, delete-orphan"
     )
 
-    tags: Mapped[list["Tag"]] = relationship(back_populates="assets", secondary=tag_association_table)
+    tags: Mapped[list["Tag"]] = relationship(
+        back_populates="assets", secondary=tag_association_table
+    )
 
     @hybrid_property
     def free(self) -> bool:
@@ -47,12 +51,15 @@ class Asset(Base):
     def _downloaded_expression(cls) -> ColumnElement[bool]:
         return type_coerce(cls.downloads.any(), Boolean)
 
+
 class Tag(Base):
     __tablename__ = "tag"
     id: Mapped[int] = mapped_column(primary_key=True)
     label: Mapped[str]
 
-    assets: Mapped[list[Asset]] = relationship(back_populates="tags", secondary=tag_association_table)
+    assets: Mapped[list[Asset]] = relationship(
+        back_populates="tags", secondary=tag_association_table
+    )
 
 
 class Download(Base):

@@ -1,18 +1,18 @@
-from functools import cached_property
-from pathlib import Path
+import datetime
 from contextvars import ContextVar
+from functools import cached_property, reduce
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, computed_field
-from sqlalchemy import func, select, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
-from functools import reduce
 
 from .config import settings
-from .lifespan import lifespan
-from .orm import Asset, engine, Tag
+from .lifespan import lifespan, manager
+from .orm import Asset, Tag, engine
 
 app = FastAPI(lifespan=lifespan)
 
@@ -20,7 +20,7 @@ origins = [
     "http://localhost:3000",
 ]
 
-request_var: ContextVar[Request] = ContextVar('request_var')
+request_var: ContextVar[Request] = ContextVar("request_var")
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,17 +55,32 @@ class AssetModel(BaseModel):
         request = request_var.get(None)
         if request is None:
             return None
-    
-        return str(request.url_for('asset_download', id=self.id))
-    
+
+        return str(request.url_for("asset_download", id=self.id))
+
 
 class TagModel(BaseModel):
     id: int
     label: str
 
+
 class TaskModel(BaseModel):
+    id: int
     name: str
     cron: str
+    startup: bool
+    last_run_at: datetime.datetime | None
+    last_duration: float | None
+
+    @computed_field
+    @cached_property
+    def run_url(self) -> str | None:
+        request = request_var.get(None)
+        if request is None:
+            return None
+
+        return str(request.url_for("task_run", id=self.id))
+
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
@@ -88,25 +103,33 @@ async def asset_list(
     with Session(engine) as session:
         sort_field = getattr(Asset, _sort)
         stmt = select(Asset)
-        
+
         if yanked is not None:
             stmt = stmt.filter_by(yanked=yanked)
-        
+
         if downloaded is not None:
             stmt = stmt.filter_by(downloaded=downloaded)
-        
+
         if free is not None:
             stmt = stmt.filter_by(free=free)
-        
+
         if q is not None:
-            conds = [f.ilike(f"%{q}%") for f in (Asset.slug, Asset.name, Asset.creator, Asset.description, Asset.details)]
+            conds = [
+                f.ilike(f"%{q}%")
+                for f in (
+                    Asset.slug,
+                    Asset.name,
+                    Asset.creator,
+                    Asset.description,
+                    Asset.details,
+                )
+            ]
             stmt = stmt.where(reduce(lambda a, b: or_(a, b), conds))
 
         count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
         assets = (
             session.execute(
-                stmt
-                .offset(_start)
+                stmt.offset(_start)
                 .limit(_end)
                 .order_by(
                     sort_field.asc()
@@ -120,6 +143,7 @@ async def asset_list(
         response.headers.append("X-Total-Count", str(count))
         return [AssetModel.model_validate(a, from_attributes=True) for a in assets]
 
+
 @app.get("/tags")
 async def asset_list(
     response: Response,
@@ -132,15 +156,14 @@ async def asset_list(
     with Session(engine) as session:
         sort_field = getattr(Tag, _sort)
         stmt = select(Tag)
-        
+
         if q is not None:
             stmt = stmt.where(Tag.label.ilike("%{q}%"))
 
         count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
         tags = (
             session.execute(
-                stmt
-                .offset(_start)
+                stmt.offset(_start)
                 .limit(_end)
                 .order_by(
                     sort_field.asc()
@@ -153,6 +176,7 @@ async def asset_list(
         )
         response.headers.append("X-Total-Count", str(count))
         return [TagModel.model_validate(t, from_attributes=True) for t in tags]
+
 
 @app.get("/assets/{id}/download")
 async def asset_download(id: str) -> Response:
@@ -167,6 +191,7 @@ async def asset_download(id: str) -> Response:
 
         return FileResponse(filepath, filename=filepath.name)
 
+
 @app.get("/tasks")
 async def task_list(
     response: Response,
@@ -176,27 +201,23 @@ async def task_list(
     _sort: str = "id",
     q: str | None = None,
 ) -> list[TaskModel]:
-    with Session(engine) as session:
-        sort_field = getattr(Tag, _sort)
-        stmt = select(Tag)
-        
-        if q is not None:
-            stmt = stmt.where(Tag.label.ilike("%{q}%"))
-
-        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
-        tags = (
-            session.execute(
-                stmt
-                .offset(_start)
-                .limit(_end)
-                .order_by(
-                    sort_field.asc()
-                    if _order.casefold() == "asc".casefold()
-                    else sort_field.desc()
-                )
-            )
-            .scalars()
-            .all()
+    tasks = [
+        TaskModel(
+            id=i,
+            name=s.callable.__qualname__,
+            cron=s.cron,
+            startup=s.startup,
+            last_run_at=datetime.datetime.fromtimestamp(s.last_run_at) if s.last_duration else None,
+            last_duration=s.last_duration if s.last_duration else None,
         )
-        response.headers.append("X-Total-Count", str(count))
-        return [TagModel.model_validate(t, from_attributes=True) for t in tags]
+        for i, s in enumerate(manager.specs)
+    ]
+    response.headers.append("X-Total-Count", str(len(tasks)))
+    return tasks
+
+
+@app.post("/tasks/{id}/run-now")
+async def task_run(id: int) -> None:
+    spec = manager.specs[id]
+    manager._start_task(spec)
+    return

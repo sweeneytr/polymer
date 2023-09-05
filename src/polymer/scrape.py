@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .orm import Asset, Download, engine, Tag
+from .orm import Asset, Download, Tag, engine
 
 logger = getLogger(__name__)
 
@@ -169,8 +169,8 @@ class CultsClient(CultsInfra):
 
             dest = Path(settings.download_dir).joinpath(slug, filename)
             if dest.exists():
-                return filename 
-            
+                return filename
+
             dest.parent.mkdir(parents=True, exist_ok=True)
 
             with dest.open("wb") as f:
@@ -214,13 +214,15 @@ class CultsClient(CultsInfra):
 
 
 def asset_from_cults(session: Session, data) -> Asset:
-    asset_ = session.execute(select(Asset).filter_by(slug=data['slug'])).scalar_one_or_none()
+    asset_ = session.execute(
+        select(Asset).filter_by(slug=data["slug"])
+    ).scalar_one_or_none()
 
     if asset_:
         return asset_
 
     tags = []
-    for label in data['tags']:
+    for label in data["tags"]:
         tag_ = session.execute(select(Tag).filter_by(label=label)).scalar_one_or_none()
         if tag_:
             tags.append(tag_)
@@ -236,7 +238,7 @@ def asset_from_cults(session: Session, data) -> Asset:
         description=data["description"],
         cents=data["price"]["cents"],
         creator=data["creator"]["nick"],
-        tags=tags
+        tags=tags,
     )
 
 
