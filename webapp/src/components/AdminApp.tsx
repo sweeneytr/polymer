@@ -1,9 +1,11 @@
 "use client"; // only needed if you choose App Router
-import { Admin, Resource, ListGuesser, EditGuesser, BooleanInput, UrlField, SearchInput, Button, useRecordContext, DateField } from "react-admin";
+import { Admin, Resource, ListGuesser, EditGuesser, BooleanInput, UrlField, SearchInput, Button, useRecordContext, DateField, ImageField, ReferenceArrayField, SimpleShowLayout, Show } from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
 import { BooleanField, Datagrid, List, NumberField, TextField } from 'react-admin';
+import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
 import get from 'lodash/get';
 import axios from 'axios';
+import DownloadForOfflineIcon from '@mui/icons-material/DownloadForOffline';
 
 const dataProvider = jsonServerProvider("http://localhost:8000");
 
@@ -14,22 +16,64 @@ const assetFilters = [
   <BooleanInput source="free" />,
 ];
 export const AssetList = () => (
-    <List filters={assetFilters}>
-        <Datagrid rowClick="edit">
-            <TextField source="id" />
-            <TextField source="slug" />
-            <TextField source="name" />
-            <TextField source="details" />
-            <TextField source="description" />
-            <TextField source="creator" />
-            <NumberField source="cents" />
-            <UrlField source="download_url" />
-            <BooleanField source="yanked" />
-            <BooleanField source="downloaded" />
-            <BooleanField source="free" />
-            <UrlField source="nab_url" sortable={false} />
-        </Datagrid>
-    </List>
+  <List filters={assetFilters}>
+    <Datagrid rowClick="show">
+      <TextField source="id" />
+      <ImageField source="illustration_url" />
+      <TextField source="slug" />
+      <TextField source="name" />
+      <TextField source="details" />
+      <TextField source="description" />
+      <TextField source="creator" />
+      <NumberField source="cents" label="Cost"
+        options={{
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 2
+        }}
+        transform={(x) => x/100}
+      />
+      <UrlField source="download_url" />
+      <BooleanField source="yanked" />
+      <BooleanField source="downloaded" />
+      <BooleanField source="free" />
+      <ReferenceArrayField reference="tags" source="tag_ids" />
+      <UrlButton source="nab_url" label="Download" method="redirect">
+        <DownloadForOfflineIcon />
+      </UrlButton>
+    </Datagrid>
+  </List>
+);
+
+export const AssetShow = () => (
+  <Show>
+    <SimpleShowLayout>
+      <TextField source="id" />
+      <ImageField source="illustration_url" />
+      <ImageField source="illustrations" src="src" />
+      <TextField source="slug" />
+      <TextField source="name" />
+      <TextField source="details" />
+      <TextField source="description" />
+      <TextField source="creator" />
+      <NumberField source="cents" label="Cost"
+        options={{
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 2
+        }}
+        transform={(x) => x/100}
+      />
+      <UrlField source="download_url" />
+      <BooleanField source="yanked" />
+      <BooleanField source="downloaded" />
+      <BooleanField source="free" />
+      <ReferenceArrayField reference="tags" source="tag_ids" />
+      <UrlButton source="nab_url" label="Download" method="redirect">
+        <DownloadForOfflineIcon />
+      </UrlButton>
+    </SimpleShowLayout>
+  </Show>
 );
 
 const tagFilters = [
@@ -37,10 +81,10 @@ const tagFilters = [
 ];
 export const TagList = () => (
   <List filters={tagFilters}>
-      <Datagrid rowClick="edit">
-          <TextField source="id" />
-          <TextField source="label" />
-      </Datagrid>
+    <Datagrid rowClick="edit">
+      <TextField source="id" />
+      <TextField source="label" />
+    </Datagrid>
   </List>
 );
 
@@ -49,23 +93,37 @@ const taskFilters = [
 ];
 export const TaskList = () => (
   <List filters={taskFilters}>
-      <Datagrid rowClick="edit">
-          <TextField source="name" />
-          <TextField source="cron" />
-          <BooleanField source="startup" />
-          <DateField source="last_run_at" showTime />
-          <NumberField source="last_duration" />
-          <UrlButton source="run_url" label="Run now" />
-      </Datagrid>
+    <Datagrid rowClick="edit">
+      <TextField source="name" />
+      <TextField source="cron" />
+      <BooleanField source="startup" />
+      <DateField source="last_run_at" showTime />
+      <NumberField source="last_duration" />
+      <UrlButton source="run_url" label="Run" method="post">
+        <PlayCircleFilledIcon />
+      </UrlButton>
+    </Datagrid>
   </List>
 );
 
-const UrlButton = ({ source, ...rest }: {source: string}) => {
+const UrlButton = ({ source, method, ...rest }: { source: string, method: "get"|"post"|"redirect"}) => {
   const record = useRecordContext();
+  const url = record ? get(record, source) : null;
+
   const handleClick = () => {
-    axios.post(get(record, source));
+    switch(method) {
+      case "redirect":
+        window.location = url;
+        break;
+      case "get":
+        axios.get(url);
+        break;
+      case "post":
+        axios.post(url);
+        break;
+    }
   }
-  return record ? <Button onClick={handleClick} {...rest} /> : null;
+  return url ? <Button onClick={handleClick} {...rest} /> : null;
 }
 
 const AdminApp = () => (
@@ -73,6 +131,7 @@ const AdminApp = () => (
     <Resource
       name="assets"
       list={AssetList}
+      show={AssetShow}
       recordRepresentation="name"
     />
     <Resource

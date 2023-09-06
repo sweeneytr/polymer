@@ -2,19 +2,23 @@ import datetime
 from contextvars import ContextVar
 from functools import cached_property, reduce
 from pathlib import Path
-
+from typing import Annotated, Any, Self
+from fastapi import Query
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, computed_field, Field, AliasPath, field_validator, FieldValidationInfo, model_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from logging import getLogger
 
 from .config import settings
 from .lifespan import lifespan, manager
 from .orm import Asset, Tag, engine
 
 app = FastAPI(lifespan=lifespan)
+
+logger = getLogger(__name__)
 
 origins = [
     "http://localhost:3000",
@@ -31,6 +35,9 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+class IllustrationModel(BaseModel):
+    src: str
+
 
 class AssetModel(BaseModel):
     id: int
@@ -43,6 +50,10 @@ class AssetModel(BaseModel):
     download_url: str | None
     yanked: bool
     downloaded: bool
+    illustration_url: str | None = Field(default=None, validation_alias=AliasPath("primary_illustration", "src"))
+    illustrations: list[IllustrationModel]
+    tag_ids: list[int]
+
 
     @computed_field
     @cached_property
@@ -55,9 +66,12 @@ class AssetModel(BaseModel):
         request = request_var.get(None)
         if request is None:
             return None
+        
+        if not self.downloaded:
+            return None
 
         return str(request.url_for("asset_download", id=self.id))
-
+    
 
 class TagModel(BaseModel):
     id: int
@@ -144,6 +158,15 @@ async def asset_list(
         return [AssetModel.model_validate(a, from_attributes=True) for a in assets]
 
 
+@app.get("/assets/{id}")
+async def asset_list(
+    id: int
+) -> AssetModel:
+    with Session(engine) as session:
+        asset = session.execute(select(Asset).filter_by(id=id)).scalar_one()
+        return AssetModel.model_validate(asset, from_attributes=True)
+
+
 @app.get("/tags")
 async def asset_list(
     response: Response,
@@ -152,6 +175,7 @@ async def asset_list(
     _order: str = "ASC",
     _sort: str = "id",
     q: str | None = None,
+    id: Annotated[list[str] | None, Query()] = None,
 ) -> list[TagModel]:
     with Session(engine) as session:
         sort_field = getattr(Tag, _sort)
@@ -160,12 +184,17 @@ async def asset_list(
         if q is not None:
             stmt = stmt.where(Tag.label.ilike("%{q}%"))
 
+        if id is not None:
+            stmt = stmt.where(Tag.id.in_(id))
+
         count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
+
+        if id is None:
+            stmt = stmt.offset(_start).limit(_end)
+
         tags = (
             session.execute(
-                stmt.offset(_start)
-                .limit(_end)
-                .order_by(
+                stmt.order_by(
                     sort_field.asc()
                     if _order.casefold() == "asc".casefold()
                     else sort_field.desc()

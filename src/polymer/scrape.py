@@ -13,56 +13,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .orm import Asset, Download, Tag, engine
+from .orm import Asset, Download, Tag, engine, Illustration
+from importlib.resources import files
 
 logger = getLogger(__name__)
 
 TIME_ZONE = "America/New_York"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36"
-
-GRAPHQL = """\
-query ListOrders($offset: Int, $limit: Int) {
-    me {
-        orders(offset: $offset, limit: $limit) {
-            id
-            lines {
-                creation {
-                    id
-                    name
-                    details
-                    description
-                    slug
-                    url
-                    tags
-                    creator {
-                        nick
-                    }
-                    price { cents }
-                }
-                downloadUrl 
-            }
-        }
-    }
-}
-
-query LikedCreations($offset: Int, $limit: Int) {
-    me {
-        likedCreations(offset: $offset, limit: $limit) {
-            id
-            name
-            details
-            description
-            slug
-            url
-            tags
-            creator {
-                nick
-            }
-            price { cents }
-        }
-    }
-}
-"""
+GRAPHQL = files(__package__).joinpath('cults.graphql').read_text()
 
 
 def _get_csrf(html: BeautifulSoup) -> str:
@@ -230,6 +188,9 @@ def asset_from_cults(session: Session, data) -> Asset:
             tag_ = Tag(label=label)
             session.add(tag_)
             tags.append(tag_)
+    
+    illustrations = [Illustration(src=i['imageUrl']) for i in data['illustrations']]
+
 
     return Asset(
         name=data["name"],
@@ -239,6 +200,7 @@ def asset_from_cults(session: Session, data) -> Asset:
         cents=data["price"]["cents"],
         creator=data["creator"]["nick"],
         tags=tags,
+        illustrations=illustrations,
     )
 
 

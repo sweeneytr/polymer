@@ -1,9 +1,11 @@
 from pathlib import Path
-
+from typing import Optional
 from sqlalchemy import (Boolean, Column, ColumnElement, ForeignKey, Table,
                         create_engine, type_coerce)
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import AssociationProxy
 
 
 class Base(DeclarativeBase):
@@ -34,9 +36,18 @@ class Asset(Base):
         back_populates="asset", cascade="all, delete-orphan"
     )
 
+    illustrations: Mapped[list["Illustration"]] = relationship(
+        back_populates="asset", cascade="all, delete-orphan", foreign_keys=lambda: [Illustration.asset_id]
+    )
+
     tags: Mapped[list["Tag"]] = relationship(
         back_populates="assets", secondary=tag_association_table
     )
+    tag_ids: AssociationProxy[list[str]] = association_proxy("tags", "id")
+
+    @property
+    def primary_illustration(self) -> Optional["Illustration"]:
+        return None if not self.illustrations else self.illustrations[0]
 
     @hybrid_property
     def free(self) -> bool:
@@ -73,6 +84,19 @@ class Download(Base):
     @property
     def path(self) -> Path:
         return Path(self.asset.slug, self.filename)
+
+class Illustration(Base):
+    __tablename__ = "illustration"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    asset_id: Mapped[str] = mapped_column(ForeignKey("asset.id"))
+    src: Mapped[str]
+
+    asset: Mapped[Asset] = relationship(back_populates="illustrations", foreign_keys=[asset_id])
+
+    @property
+    def model(self) -> dict:
+        return {"url": self.src}
+
 
 
 class CultsSettings(Base):

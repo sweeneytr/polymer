@@ -1,0 +1,39 @@
+query ListOrders($offset: Int, $limit: Int) {
+    me {
+        orders(offset: $offset, limit: $limit) {
+            id
+            lines {
+                creation {
+                    ...creationFields
+                }
+                downloadUrl 
+            }
+        }
+    }
+}
+
+query LikedCreations($offset: Int, $limit: Int) {
+    me {
+        likedCreations(offset: $offset, limit: $limit) {
+            ...creationFields
+        }
+    }
+}
+
+fragment creationFields on Creation {
+    id
+    name
+    details
+    description
+    slug
+    url
+    tags
+    illustrationImageUrl
+    illustrations {
+        imageUrl
+    }
+    creator {
+        nick
+    }
+    price { cents }
+}
