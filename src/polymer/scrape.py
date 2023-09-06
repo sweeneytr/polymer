@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .orm import Asset, Download, Tag, engine, Illustration
+from .orm import Asset, Download, Tag, engine, Illustration, User
 from importlib.resources import files
 
 logger = getLogger(__name__)
@@ -186,9 +186,13 @@ def asset_from_cults(session: Session, data) -> Asset:
             tags.append(tag_)
         else:
             tag_ = Tag(label=label)
-            session.add(tag_)
             tags.append(tag_)
-    
+
+    nick = data["creator"]["nick"]
+    user = session.execute(select(User).filter_by(nickname=nick)).scalar_one_or_none()
+    if not user:
+        user = User(nickname=nick)
+
     illustrations = [Illustration(src=i['imageUrl']) for i in data['illustrations']]
 
 
@@ -198,7 +202,7 @@ def asset_from_cults(session: Session, data) -> Asset:
         details=data["details"],
         description=data["description"],
         cents=data["price"]["cents"],
-        creator=data["creator"]["nick"],
+        creator=user,
         tags=tags,
         illustrations=illustrations,
     )

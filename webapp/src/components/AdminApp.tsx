@@ -1,5 +1,5 @@
 "use client"; // only needed if you choose App Router
-import { Admin, Resource, ListGuesser, EditGuesser, BooleanInput, UrlField, SearchInput, Button, useRecordContext, DateField, ImageField, ReferenceArrayField, SimpleShowLayout, Show } from "react-admin";
+import { Admin, Resource, ListGuesser, EditGuesser, BooleanInput, UrlField, SearchInput, Button, useRecordContext, DateField, ImageField, ReferenceArrayField, SimpleShowLayout, Show, ReferenceManyField, SingleFieldList, ChipField } from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
 import { BooleanField, Datagrid, List, NumberField, TextField } from 'react-admin';
 import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
@@ -37,7 +37,11 @@ export const AssetList = () => (
       <BooleanField source="yanked" />
       <BooleanField source="downloaded" />
       <BooleanField source="free" />
-      <ReferenceArrayField reference="tags" source="tag_ids" />
+      <ReferenceArrayField reference="tags" source="tag_ids">
+        <SingleFieldList linkType="show">
+          <ChipField source="label"/>
+        </SingleFieldList>
+      </ReferenceArrayField>
       <UrlButton source="nab_url" label="Download" method="redirect">
         <DownloadForOfflineIcon />
       </UrlButton>
@@ -68,7 +72,11 @@ export const AssetShow = () => (
       <BooleanField source="yanked" />
       <BooleanField source="downloaded" />
       <BooleanField source="free" />
-      <ReferenceArrayField reference="tags" source="tag_ids" />
+      <ReferenceArrayField reference="tags" source="tag_ids">
+        <SingleFieldList linkType="show">
+          <ChipField source="label"/>
+        </SingleFieldList>
+      </ReferenceArrayField>
       <UrlButton source="nab_url" label="Download" method="redirect">
         <DownloadForOfflineIcon />
       </UrlButton>
@@ -81,11 +89,30 @@ const tagFilters = [
 ];
 export const TagList = () => (
   <List filters={tagFilters}>
-    <Datagrid rowClick="edit">
+    <Datagrid rowClick="show">
       <TextField source="id" />
       <TextField source="label" />
     </Datagrid>
   </List>
+);
+
+export const TagShow = () => (
+  <Show>
+    <SimpleShowLayout>
+      <TextField source="id" />
+      <TextField source="label" />
+      <ReferenceManyField label="Assets" reference="assets" target="tag_id">
+        <Datagrid rowClick="show">
+          <TextField source="slug" />
+          <ReferenceArrayField reference="tags" source="tag_ids" >
+            <SingleFieldList linkType="show">
+              <ChipField source="label"/>
+            </SingleFieldList>
+          </ReferenceArrayField>
+        </Datagrid>
+      </ReferenceManyField>
+    </SimpleShowLayout>
+  </Show>
 );
 
 const taskFilters = [
@@ -137,6 +164,7 @@ const AdminApp = () => (
     <Resource
       name="tags"
       list={TagList}
+      show={TagShow}
       recordRepresentation="label"
     />
     <Resource

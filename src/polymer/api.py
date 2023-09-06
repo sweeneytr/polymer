@@ -45,7 +45,7 @@ class AssetModel(BaseModel):
     name: str
     details: str
     description: str
-    creator: str
+    creator: str = Field(validation_alias=AliasPath("creator", "nickname"))
     cents: int
     download_url: str | None
     yanked: bool
@@ -109,6 +109,7 @@ async def asset_list(
     _end: int = 10,
     _order: str = "ASC",
     _sort: str = "id",
+    tag_id: int | None = None,
     yanked: bool | None = None,
     downloaded: bool | None = None,
     free: bool | None = None,
@@ -126,6 +127,9 @@ async def asset_list(
 
         if free is not None:
             stmt = stmt.filter_by(free=free)
+
+        if tag_id is not None:
+            stmt = stmt.where(Asset.tag_ids.any(Tag.id == tag_id))
 
         if q is not None:
             conds = [
@@ -206,6 +210,17 @@ async def asset_list(
         response.headers.append("X-Total-Count", str(count))
         return [TagModel.model_validate(t, from_attributes=True) for t in tags]
 
+
+@app.get("/tags/{id}")
+async def asset_list(
+    id: int
+) -> TagModel:
+    with Session(engine) as session:
+        tag = (
+            session.execute(select(Tag).filter_by(id=id))
+            .scalar_one()
+        )
+        return TagModel.model_validate(tag, from_attributes=True)
 
 @app.get("/assets/{id}/download")
 async def asset_download(id: str) -> Response:

@@ -24,7 +24,7 @@ class Asset(Base):
     __tablename__ = "asset"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    creator: Mapped[str]
+    creator_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     details: Mapped[str]
     description: Mapped[str]
     slug: Mapped[str]
@@ -38,6 +38,10 @@ class Asset(Base):
 
     illustrations: Mapped[list["Illustration"]] = relationship(
         back_populates="asset", cascade="all, delete-orphan", foreign_keys=lambda: [Illustration.asset_id]
+    )
+
+    creator: Mapped["User"] = relationship(
+        back_populates="assets",
     )
 
     tags: Mapped[list["Tag"]] = relationship(
@@ -72,6 +76,15 @@ class Tag(Base):
         back_populates="tags", secondary=tag_association_table
     )
 
+
+class User(Base):
+    __tablename__ = "user"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nickname: Mapped[str]
+
+    assets: Mapped[list[Asset]] = relationship(
+        back_populates="creator", cascade="all, delete-orphan"
+    )
 
 class Download(Base):
     __tablename__ = "download"
