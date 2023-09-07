@@ -1,14 +1,21 @@
 import time
-from asyncio import Task, create_task
+from asyncio import Queue, Task, TaskGroup, create_task
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from logging import getLogger
 
 import aiocron
+import httpx
 from fastapi import FastAPI
+from sqlalchemy.orm import Session
 
-from .scrape import download_orders, fetch_liked, fetch_orders, order_liked_free
+from .cults_client import CultsClient
+from .ingester import Ingester
+from .orm import engine
+from .scrape import (download_orders, fetch_liked, fetch_orders,
+                     order_liked_free)
+from .scraper import Scraper
 
 logger = getLogger(__name__)
 
@@ -60,13 +67,24 @@ manager = TaskManager()
 
 minutely = "* * * * *"
 
-manager.register(fetch_liked, minutely, startup=True)
 manager.register(order_liked_free, minutely)
-manager.register(fetch_orders, minutely)
 manager.register(download_orders, minutely)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
-    manager.startup()
-    yield
+    queue = Queue()
+    async with TaskGroup() as tg:
+        with Session(engine) as ingester_session:
+            async with httpx.AsyncClient() as http_client:
+                client = CultsClient(http_client)
+                scraper = Scraper(client, queue)
+                ingester = Ingester(ingester_session, queue)
+
+                manager.register(scraper.fetch_liked, minutely, startup=True)
+                manager.register(scraper.fetch_orders, minutely)
+
+                tg.create_task(ingester.run())
+                manager.startup()
+
+                yield

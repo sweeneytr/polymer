@@ -1,15 +1,8 @@
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    ColumnElement,
-    ForeignKey,
-    Table,
-    create_engine,
-    type_coerce,
-)
+from sqlalchemy import (Boolean, Column, ColumnElement, ForeignKey, Table,
+                        create_engine, type_coerce)
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship

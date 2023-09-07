@@ -4,21 +4,23 @@ from logging import getLogger
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from .app import app
 from .config import settings
 from .lifespan import manager
 from .models import AssetModel, TagModel, TaskModel, UserModel
 from .orm import Asset, Tag, User, engine
 
+router = APIRouter()
+
+
 logger = getLogger(__name__)
 
 
-@app.get("/assets")
+@router.get("/assets")
 async def asset_list(
     response: Response,
     _start: int = 0,
@@ -88,14 +90,14 @@ async def asset_list(
         return [AssetModel.model_validate(a, from_attributes=True) for a in assets]
 
 
-@app.get("/assets/{id}")
+@router.get("/assets/{id}")
 async def asset(id: int) -> AssetModel:
     with Session(engine) as session:
         asset = session.execute(select(Asset).filter_by(id=id)).scalar_one()
         return AssetModel.model_validate(asset, from_attributes=True)
 
 
-@app.get("/tags")
+@router.get("/tags")
 async def tag_list(
     response: Response,
     _start: int = 0,
@@ -135,14 +137,14 @@ async def tag_list(
         return [TagModel.model_validate(t, from_attributes=True) for t in tags]
 
 
-@app.get("/tags/{id}")
+@router.get("/tags/{id}")
 async def tag(id: int) -> TagModel:
     with Session(engine) as session:
         tag = session.execute(select(Tag).filter_by(id=id)).scalar_one()
         return TagModel.model_validate(tag, from_attributes=True)
 
 
-@app.get("/assets/{id}/download")
+@router.get("/assets/{id}/download")
 async def asset_download(id: str) -> Response:
     with Session(engine) as session:
         asset = session.execute(select(Asset).filter_by(id=id)).scalar_one()
@@ -156,7 +158,7 @@ async def asset_download(id: str) -> Response:
         return FileResponse(filepath, filename=filepath.name)
 
 
-@app.get("/tasks")
+@router.get("/tasks")
 async def task_list(
     response: Response,
     _start: int = 0,
@@ -182,14 +184,14 @@ async def task_list(
     return tasks
 
 
-@app.post("/tasks/{id}/run-now")
+@router.post("/tasks/{id}/run-now")
 async def task_run(id: int) -> None:
     spec = manager.specs[id]
     manager._start_task(spec)
     return
 
 
-@app.get("/users")
+@router.get("/users")
 async def users_list(
     response: Response,
     _start: int = 0,
@@ -230,7 +232,7 @@ async def users_list(
         return [UserModel.model_validate(a, from_attributes=True) for a in orms]
 
 
-@app.get("/users/{id}")
+@router.get("/users/{id}")
 async def asset(id: int) -> UserModel:
     with Session(engine) as session:
         orm = session.execute(select(User).filter_by(id=id)).scalar_one()
