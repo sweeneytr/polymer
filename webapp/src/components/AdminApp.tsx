@@ -62,10 +62,7 @@ export const AssetList = () => (
         }}
         transform={(x) => x / 100}
       />
-      <UrlField source="download_url" />
       <BooleanField source="yanked" />
-      <BooleanField source="downloaded" />
-      <BooleanField source="free" />
       <ReferenceArrayField reference="tags" source="tag_ids">
         <SingleFieldList linkType="show">
           <ChipField source="label" />
@@ -99,10 +96,7 @@ export const AssetShow = () => (
         }}
         transform={(x) => x / 100}
       />
-      <UrlField source="download_url" />
       <BooleanField source="yanked" />
-      <BooleanField source="downloaded" />
-      <BooleanField source="free" />
       <ReferenceArrayField reference="tags" source="tag_ids">
         <SingleFieldList linkType="show">
           <ChipField source="label" />
