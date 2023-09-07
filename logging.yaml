@@ -10,7 +10,7 @@ loggers:
     uvicorn:
         level: INFO
     polymer:
-        level: DEBUG
+        level: INFO
 
 root:
     level: WARN
