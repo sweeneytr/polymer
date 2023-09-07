@@ -44,7 +44,7 @@ export const AssetList = () => (
   <List filters={assetFilters}>
     <Datagrid rowClick="show">
       <TextField source="id" />
-      <ImageField source="illustration_url" />
+      <ImageField source="illustration_url" label="Illustration" />
       <TextField source="slug" />
       <TextField source="name" />
       <TextField source="details" />
@@ -132,12 +132,26 @@ export const TagShow = () => (
       <ReferenceManyField label="Assets" reference="assets" target="tag_id" pagination={<Pagination />}>
         <Datagrid rowClick="show" >
           <TextField source="slug" />
+          <ImageField source="illustration_url" label="Illustration" />
           <ReferenceField source="creator_id" reference="users" link="show" />
           <ReferenceArrayField reference="tags" source="tag_ids">
             <SingleFieldList linkType="show">
               <ChipField source="label" />
             </SingleFieldList>
           </ReferenceArrayField>
+          <NumberField
+            source="cents"
+            label="Cost"
+            options={{
+              style: "currency",
+              currency: "USD",
+              minimumFractionDigits: 2,
+            }}
+            transform={(x) => x / 100}
+          />
+          <UrlButton source="nab_url" label="Download" method="redirect">
+            <DownloadForOfflineIcon />
+          </UrlButton>
         </Datagrid>
       </ReferenceManyField>
     </SimpleShowLayout>
@@ -163,12 +177,26 @@ export const UserShow = () => (
 
       <ReferenceArrayField reference="assets" source="asset_ids" pagination={<Pagination />}>
         <Datagrid rowClick="show">
-          <TextField source="slug" />
+          <TextField source="slug" />      
+          <ImageField source="illustration_url" label="Illustration" />
           <ReferenceArrayField reference="tags" source="tag_ids">
             <SingleFieldList linkType="show">
               <ChipField source="label" />
             </SingleFieldList>
           </ReferenceArrayField>
+          <NumberField
+            source="cents"
+            label="Cost"
+            options={{
+              style: "currency",
+              currency: "USD",
+              minimumFractionDigits: 2,
+            }}
+            transform={(x) => x / 100}
+          />
+          <UrlButton source="nab_url" label="Download" method="redirect">
+            <DownloadForOfflineIcon />
+          </UrlButton>
         </Datagrid>
       </ReferenceArrayField>
     </SimpleShowLayout>
