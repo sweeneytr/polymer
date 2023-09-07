@@ -31,6 +31,8 @@ import PlayCircleFilledIcon from "@mui/icons-material/PlayCircleFilled";
 import get from "lodash/get";
 import axios from "axios";
 import DownloadForOfflineIcon from "@mui/icons-material/DownloadForOffline";
+import React from "react";
+import { QueryClient } from "react-query";
 
 const dataProvider = jsonServerProvider("http://localhost:8000");
 
@@ -129,8 +131,13 @@ export const TagShow = () => (
     <SimpleShowLayout>
       <TextField source="id" />
       <TextField source="label" />
-      <ReferenceManyField label="Assets" reference="assets" target="tag_id" pagination={<Pagination />}>
-        <Datagrid rowClick="show" >
+      <ReferenceManyField
+        label="Assets"
+        reference="assets"
+        target="tag_id"
+        pagination={<Pagination />}
+      >
+        <Datagrid rowClick="show">
           <TextField source="slug" />
           <ImageField source="illustration_url" label="Illustration" />
           <ReferenceField source="creator_id" reference="users" link="show" />
@@ -164,7 +171,11 @@ export const UserList = () => (
     <Datagrid rowClick="show">
       <TextField source="id" />
       <TextField source="nickname" />
-      <ReferenceManyCount label="Assets" reference="assets" target="creator_id" />
+      <ReferenceManyCount
+        label="Assets"
+        reference="assets"
+        target="creator_id"
+      />
     </Datagrid>
   </List>
 );
@@ -175,9 +186,13 @@ export const UserShow = () => (
       <TextField source="id" />
       <TextField source="nickname" />
 
-      <ReferenceArrayField reference="assets" source="asset_ids" pagination={<Pagination />}>
+      <ReferenceArrayField
+        reference="assets"
+        source="asset_ids"
+        pagination={<Pagination />}
+      >
         <Datagrid rowClick="show">
-          <TextField source="slug" />      
+          <TextField source="slug" />
           <ImageField source="illustration_url" label="Illustration" />
           <ReferenceArrayField reference="tags" source="tag_ids">
             <SingleFieldList linkType="show">
@@ -226,6 +241,7 @@ const UrlButton = ({
 }: {
   source: string;
   method: "get" | "post" | "redirect";
+  [key: string]: any;
 }) => {
   const record = useRecordContext();
   const url = record ? get(record, source) : null;
@@ -246,28 +262,38 @@ const UrlButton = ({
   return url ? <Button onClick={handleClick} {...rest} /> : null;
 };
 
-const AdminApp = () => (
-  <Admin dataProvider={dataProvider}>
-    <Resource
-      name="assets"
-      list={AssetList}
-      show={AssetShow}
-      recordRepresentation="name"
-    />
-    <Resource
-      name="tags"
-      list={TagList}
-      show={TagShow}
-      recordRepresentation="label"
-    />
-    <Resource name="tasks" list={TaskList} recordRepresentation="name" />
-    <Resource
-      name="users"
-      list={UserList}
-      show={UserShow}
-      recordRepresentation="nickname"
-    />
-  </Admin>
-);
+const AdminApp = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5 * 60 * 1000, // 5 minutes
+      },
+    },
+  });
+
+  return (
+    <Admin dataProvider={dataProvider} queryClient={queryClient}>
+      <Resource
+        name="assets"
+        list={AssetList}
+        show={AssetShow}
+        recordRepresentation="name"
+      />
+      <Resource
+        name="tags"
+        list={TagList}
+        show={TagShow}
+        recordRepresentation="label"
+      />
+      <Resource name="tasks" list={TaskList} recordRepresentation="name" />
+      <Resource
+        name="users"
+        list={UserList}
+        show={UserShow}
+        recordRepresentation="nickname"
+      />
+    </Admin>
+  );
+};
 
 export default AdminApp;
