@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from asyncio import Queue
 from logging import getLogger
 

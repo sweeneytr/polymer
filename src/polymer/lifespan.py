@@ -1,5 +1,5 @@
 import time
-from asyncio import Queue, Task, TaskGroup, create_task
+from asyncio import Queue, Task, create_task
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -13,8 +13,7 @@ from sqlalchemy.orm import Session
 from .cults_client import CultsClient
 from .ingester import Ingester
 from .orm import engine
-from .scrape import (download_orders, fetch_liked, fetch_orders,
-                     order_liked_free)
+from .actor import Actor
 from .scraper import Scraper
 
 logger = getLogger(__name__)
@@ -67,24 +66,30 @@ manager = TaskManager()
 
 minutely = "* * * * *"
 
-manager.register(order_liked_free, minutely)
-manager.register(download_orders, minutely)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
     queue = Queue()
-    async with TaskGroup() as tg:
-        with Session(engine) as ingester_session:
-            async with httpx.AsyncClient() as http_client:
-                client = CultsClient(http_client)
-                scraper = Scraper(client, queue)
-                ingester = Ingester(ingester_session, queue)
 
-                manager.register(scraper.fetch_liked, minutely, startup=True)
-                manager.register(scraper.fetch_orders, minutely)
+    with Session(engine) as ingester_session, Session(engine) as actor_session:
+        async with httpx.AsyncClient() as http_client, httpx.AsyncClient() as http_client_2:
+            client = CultsClient(http_client)
+            client_2 = CultsClient(http_client_2)
+            
+            scraper = Scraper(client, queue)
+            ingester = Ingester(ingester_session, queue)
+            actor = Actor(client_2, actor_session)
 
-                tg.create_task(ingester.run())
-                manager.startup()
+            manager.register(scraper.fetch_liked, minutely, startup=True)
+            manager.register(scraper.fetch_orders, minutely)
+            manager.register(actor.order_liked_free, minutely)
+            manager.register(actor.download_orders, minutely)
 
-                yield
+            ingester_task = create_task(ingester.run())
+            manager.startup()
+
+            yield
+
+            ingester_task.cancel()
+
+            

@@ -208,7 +208,6 @@ async def users_list(
         if q is not None:
             stmt = stmt.where(User.nickname.ilike(f"%{q}%"))
 
-        logger.warning(id)
         if id is not None:
             stmt = stmt.where(User.id.in_(id))
 

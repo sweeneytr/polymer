@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from importlib.resources import files
 from itertools import count
 from logging import getLogger
