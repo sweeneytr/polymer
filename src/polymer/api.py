@@ -14,7 +14,7 @@ from logging import getLogger
 
 from .config import settings
 from .lifespan import lifespan, manager
-from .orm import Asset, Tag, engine
+from .orm import Asset, Tag, engine, User
 
 app = FastAPI(lifespan=lifespan)
 
@@ -46,6 +46,7 @@ class AssetModel(BaseModel):
     details: str
     description: str
     creator: str = Field(validation_alias=AliasPath("creator", "nickname"))
+    creator_id: int
     cents: int
     download_url: str | None
     yanked: bool
@@ -76,6 +77,12 @@ class AssetModel(BaseModel):
 class TagModel(BaseModel):
     id: int
     label: str
+
+
+class UserModel(BaseModel):
+    id: int
+    nickname: str
+    asset_ids: list[int]
 
 
 class TaskModel(BaseModel):
@@ -114,6 +121,7 @@ async def asset_list(
     downloaded: bool | None = None,
     free: bool | None = None,
     q: str | None = None,
+    id: Annotated[list[int] | None, Query()] = None,
 ) -> list[AssetModel]:
     with Session(engine) as session:
         sort_field = getattr(Asset, _sort)
@@ -144,12 +152,18 @@ async def asset_list(
             ]
             stmt = stmt.where(reduce(lambda a, b: or_(a, b), conds))
 
+        if id is not None:
+            stmt = stmt.where(Asset.id.in_(id))
+
         count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
+
+
+        if id is None:
+            stmt = stmt.offset(_start).limit(_end)
+
         assets = (
             session.execute(
-                stmt.offset(_start)
-                .limit(_end)
-                .order_by(
+                stmt.order_by(
                     sort_field.asc()
                     if _order.casefold() == "asc".casefold()
                     else sort_field.desc()
@@ -163,7 +177,7 @@ async def asset_list(
 
 
 @app.get("/assets/{id}")
-async def asset_list(
+async def asset(
     id: int
 ) -> AssetModel:
     with Session(engine) as session:
@@ -172,14 +186,14 @@ async def asset_list(
 
 
 @app.get("/tags")
-async def asset_list(
+async def tag_list(
     response: Response,
     _start: int = 0,
     _end: int = 10,
     _order: str = "ASC",
     _sort: str = "id",
     q: str | None = None,
-    id: Annotated[list[str] | None, Query()] = None,
+    id: Annotated[list[int] | None, Query()] = None,
 ) -> list[TagModel]:
     with Session(engine) as session:
         sort_field = getattr(Tag, _sort)
@@ -212,7 +226,7 @@ async def asset_list(
 
 
 @app.get("/tags/{id}")
-async def asset_list(
+async def tag(
     id: int
 ) -> TagModel:
     with Session(engine) as session:
@@ -265,3 +279,54 @@ async def task_run(id: int) -> None:
     spec = manager.specs[id]
     manager._start_task(spec)
     return
+
+
+@app.get("/users")
+async def users_list(
+    response: Response,
+    _start: int = 0,
+    _end: int = 10,
+    _order: str = "ASC",
+    _sort: str = "id",
+    q: str | None = None,
+    id: Annotated[list[int] | None, Query()] = None,
+) -> list[UserModel]:
+    with Session(engine) as session:
+        sort_field = getattr(User, _sort)
+        stmt = select(User)
+
+        if q is not None:
+            stmt = stmt.where(User.nickname.ilike(f"%{q}%"))
+
+        logger.warning(id)
+        if id is not None:
+            stmt = stmt.where(User.id.in_(id))
+
+        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
+
+        if id is None:
+            stmt = stmt.offset(_start).limit(_end)
+
+        orms = (
+            session.execute(
+                stmt.order_by(
+                    sort_field.asc()
+                    if _order.casefold() == "asc".casefold()
+                    else sort_field.desc()
+                )
+            )
+            .scalars()
+            .all()
+        )
+        response.headers.append("X-Total-Count", str(count))
+        return [UserModel.model_validate(a, from_attributes=True) for a in orms]
+
+
+@app.get("/users/{id}")
+async def asset(
+    id: int
+) -> UserModel:
+    with Session(engine) as session:
+        orm = session.execute(select(User).filter_by(id=id)).scalar_one()
+        return UserModel.model_validate(orm, from_attributes=True)
+

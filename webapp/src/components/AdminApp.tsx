@@ -1,11 +1,34 @@
 "use client"; // only needed if you choose App Router
-import { Admin, Resource, ListGuesser, EditGuesser, BooleanInput, UrlField, SearchInput, Button, useRecordContext, DateField, ImageField, ReferenceArrayField, SimpleShowLayout, Show, ReferenceManyField, SingleFieldList, ChipField } from "react-admin";
+import {
+  Admin,
+  Resource,
+  BooleanInput,
+  UrlField,
+  SearchInput,
+  Button,
+  useRecordContext,
+  DateField,
+  ImageField,
+  ReferenceArrayField,
+  SimpleShowLayout,
+  Show,
+  ReferenceManyField,
+  SingleFieldList,
+  ChipField,
+  ReferenceField,
+} from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
-import { BooleanField, Datagrid, List, NumberField, TextField } from 'react-admin';
-import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
-import get from 'lodash/get';
-import axios from 'axios';
-import DownloadForOfflineIcon from '@mui/icons-material/DownloadForOffline';
+import {
+  BooleanField,
+  Datagrid,
+  List,
+  NumberField,
+  TextField,
+} from "react-admin";
+import PlayCircleFilledIcon from "@mui/icons-material/PlayCircleFilled";
+import get from "lodash/get";
+import axios from "axios";
+import DownloadForOfflineIcon from "@mui/icons-material/DownloadForOffline";
 
 const dataProvider = jsonServerProvider("http://localhost:8000");
 
@@ -24,14 +47,16 @@ export const AssetList = () => (
       <TextField source="name" />
       <TextField source="details" />
       <TextField source="description" />
-      <TextField source="creator" />
-      <NumberField source="cents" label="Cost"
+      <ReferenceField source="creator_id" reference="users" link="show" />
+      <NumberField
+        source="cents"
+        label="Cost"
         options={{
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 2
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 2,
         }}
-        transform={(x) => x/100}
+        transform={(x) => x / 100}
       />
       <UrlField source="download_url" />
       <BooleanField source="yanked" />
@@ -39,7 +64,7 @@ export const AssetList = () => (
       <BooleanField source="free" />
       <ReferenceArrayField reference="tags" source="tag_ids">
         <SingleFieldList linkType="show">
-          <ChipField source="label"/>
+          <ChipField source="label" />
         </SingleFieldList>
       </ReferenceArrayField>
       <UrlButton source="nab_url" label="Download" method="redirect">
@@ -59,14 +84,16 @@ export const AssetShow = () => (
       <TextField source="name" />
       <TextField source="details" />
       <TextField source="description" />
-      <TextField source="creator" />
-      <NumberField source="cents" label="Cost"
+      <ReferenceField source="creator_id" reference="users" link="show" />
+      <NumberField
+        source="cents"
+        label="Cost"
         options={{
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 2
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 2,
         }}
-        transform={(x) => x/100}
+        transform={(x) => x / 100}
       />
       <UrlField source="download_url" />
       <BooleanField source="yanked" />
@@ -74,7 +101,7 @@ export const AssetShow = () => (
       <BooleanField source="free" />
       <ReferenceArrayField reference="tags" source="tag_ids">
         <SingleFieldList linkType="show">
-          <ChipField source="label"/>
+          <ChipField source="label" />
         </SingleFieldList>
       </ReferenceArrayField>
       <UrlButton source="nab_url" label="Download" method="redirect">
@@ -84,9 +111,7 @@ export const AssetShow = () => (
   </Show>
 );
 
-const tagFilters = [
-  <SearchInput source="q" alwaysOn />
-];
+const tagFilters = [<SearchInput source="q" alwaysOn />];
 export const TagList = () => (
   <List filters={tagFilters}>
     <Datagrid rowClick="show">
@@ -104,9 +129,9 @@ export const TagShow = () => (
       <ReferenceManyField label="Assets" reference="assets" target="tag_id">
         <Datagrid rowClick="show">
           <TextField source="slug" />
-          <ReferenceArrayField reference="tags" source="tag_ids" >
+          <ReferenceArrayField reference="tags" source="tag_ids">
             <SingleFieldList linkType="show">
-              <ChipField source="label"/>
+              <ChipField source="label" />
             </SingleFieldList>
           </ReferenceArrayField>
         </Datagrid>
@@ -115,9 +140,37 @@ export const TagShow = () => (
   </Show>
 );
 
-const taskFilters = [
-  <SearchInput source="q" alwaysOn />
-];
+const userFilters = [<SearchInput source="q" alwaysOn />];
+export const UserList = () => (
+  <List filters={userFilters}>
+    <Datagrid rowClick="show">
+      <TextField source="id" />
+      <TextField source="nickname" />
+    </Datagrid>
+  </List>
+);
+
+export const UserShow = () => (
+  <Show>
+    <SimpleShowLayout>
+      <TextField source="id" />
+      <TextField source="nickname" />
+
+      <ReferenceArrayField reference="assets" source="asset_ids">
+        <Datagrid rowClick="show">
+          <TextField source="slug" />
+          <ReferenceArrayField reference="tags" source="tag_ids">
+            <SingleFieldList linkType="show">
+              <ChipField source="label" />
+            </SingleFieldList>
+          </ReferenceArrayField>
+        </Datagrid>
+      </ReferenceArrayField>
+    </SimpleShowLayout>
+  </Show>
+);
+
+const taskFilters = [<SearchInput source="q" alwaysOn />];
 export const TaskList = () => (
   <List filters={taskFilters}>
     <Datagrid rowClick="edit">
@@ -133,12 +186,19 @@ export const TaskList = () => (
   </List>
 );
 
-const UrlButton = ({ source, method, ...rest }: { source: string, method: "get"|"post"|"redirect"}) => {
+const UrlButton = ({
+  source,
+  method,
+  ...rest
+}: {
+  source: string;
+  method: "get" | "post" | "redirect";
+}) => {
   const record = useRecordContext();
   const url = record ? get(record, source) : null;
 
   const handleClick = () => {
-    switch(method) {
+    switch (method) {
       case "redirect":
         window.location = url;
         break;
@@ -149,9 +209,9 @@ const UrlButton = ({ source, method, ...rest }: { source: string, method: "get"|
         axios.post(url);
         break;
     }
-  }
+  };
   return url ? <Button onClick={handleClick} {...rest} /> : null;
-}
+};
 
 const AdminApp = () => (
   <Admin dataProvider={dataProvider}>
@@ -167,10 +227,12 @@ const AdminApp = () => (
       show={TagShow}
       recordRepresentation="label"
     />
+    <Resource name="tasks" list={TaskList} recordRepresentation="name" />
     <Resource
-      name="tasks"
-      list={TaskList}
-      recordRepresentation="name"
+      name="users"
+      list={UserList}
+      show={UserShow}
+      recordRepresentation="nickname"
     />
   </Admin>
 );

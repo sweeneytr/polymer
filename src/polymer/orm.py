@@ -85,6 +85,7 @@ class User(Base):
     assets: Mapped[list[Asset]] = relationship(
         back_populates="creator", cascade="all, delete-orphan"
     )
+    asset_ids: AssociationProxy[list[str]] = association_proxy("assets", "id")
 
 class Download(Base):
     __tablename__ = "download"
