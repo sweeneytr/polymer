@@ -27,5 +27,8 @@
     "react-query": "^3.39.3",
     "tailwindcss": "3.3.3",
     "typescript": "5.2.2"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.198"
   }
 }
