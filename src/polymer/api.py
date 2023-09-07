@@ -1,112 +1,21 @@
 import datetime
-from contextvars import ContextVar
-from functools import cached_property, reduce
+from functools import reduce
+from logging import getLogger
 from pathlib import Path
-from typing import Annotated, Any, Self
-from fastapi import Query
-from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
+from typing import Annotated
+
+from fastapi import HTTPException, Query, Response
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, computed_field, Field, AliasPath, field_validator, FieldValidationInfo, model_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
-from logging import getLogger
 
+from .app import app
 from .config import settings
-from .lifespan import lifespan, manager
-from .orm import Asset, Tag, engine, User
-
-app = FastAPI(lifespan=lifespan)
+from .lifespan import manager
+from .models import AssetModel, TagModel, TaskModel, UserModel
+from .orm import Asset, Tag, User, engine
 
 logger = getLogger(__name__)
-
-origins = [
-    "http://localhost:3000",
-]
-
-request_var: ContextVar[Request] = ContextVar("request_var")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
-
-class IllustrationModel(BaseModel):
-    src: str
-
-
-class AssetModel(BaseModel):
-    id: int
-    slug: str
-    name: str
-    details: str
-    description: str
-    creator: str = Field(validation_alias=AliasPath("creator", "nickname"))
-    creator_id: int
-    cents: int
-    download_url: str | None
-    yanked: bool
-    downloaded: bool
-    illustration_url: str | None = Field(default=None, validation_alias=AliasPath("primary_illustration", "src"))
-    illustrations: list[IllustrationModel]
-    tag_ids: list[int]
-
-
-    @computed_field
-    @cached_property
-    def free(self) -> bool:
-        return self.cents == 0
-
-    @computed_field
-    @cached_property
-    def nab_url(self) -> str | None:
-        request = request_var.get(None)
-        if request is None:
-            return None
-        
-        if not self.downloaded:
-            return None
-
-        return str(request.url_for("asset_download", id=self.id))
-    
-
-class TagModel(BaseModel):
-    id: int
-    label: str
-
-
-class UserModel(BaseModel):
-    id: int
-    nickname: str
-    asset_ids: list[int]
-
-
-class TaskModel(BaseModel):
-    id: int
-    name: str
-    cron: str
-    startup: bool
-    last_run_at: datetime.datetime | None
-    last_duration: float | None
-
-    @computed_field
-    @cached_property
-    def run_url(self) -> str | None:
-        request = request_var.get(None)
-        if request is None:
-            return None
-
-        return str(request.url_for("task_run", id=self.id))
-
-
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    request_var.set(request)
-    return await call_next(request)
 
 
 @app.get("/assets")
@@ -161,7 +70,6 @@ async def asset_list(
 
         count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
 
-
         if id is None:
             stmt = stmt.offset(_start).limit(_end)
 
@@ -181,9 +89,7 @@ async def asset_list(
 
 
 @app.get("/assets/{id}")
-async def asset(
-    id: int
-) -> AssetModel:
+async def asset(id: int) -> AssetModel:
     with Session(engine) as session:
         asset = session.execute(select(Asset).filter_by(id=id)).scalar_one()
         return AssetModel.model_validate(asset, from_attributes=True)
@@ -230,15 +136,11 @@ async def tag_list(
 
 
 @app.get("/tags/{id}")
-async def tag(
-    id: int
-) -> TagModel:
+async def tag(id: int) -> TagModel:
     with Session(engine) as session:
-        tag = (
-            session.execute(select(Tag).filter_by(id=id))
-            .scalar_one()
-        )
+        tag = session.execute(select(Tag).filter_by(id=id)).scalar_one()
         return TagModel.model_validate(tag, from_attributes=True)
+
 
 @app.get("/assets/{id}/download")
 async def asset_download(id: str) -> Response:
@@ -269,7 +171,9 @@ async def task_list(
             name=s.callable.__qualname__,
             cron=s.cron,
             startup=s.startup,
-            last_run_at=datetime.datetime.fromtimestamp(s.last_run_at) if s.last_duration else None,
+            last_run_at=datetime.datetime.fromtimestamp(s.last_run_at)
+            if s.last_duration
+            else None,
             last_duration=s.last_duration if s.last_duration else None,
         )
         for i, s in enumerate(manager.specs)
@@ -327,10 +231,7 @@ async def users_list(
 
 
 @app.get("/users/{id}")
-async def asset(
-    id: int
-) -> UserModel:
+async def asset(id: int) -> UserModel:
     with Session(engine) as session:
         orm = session.execute(select(User).filter_by(id=id)).scalar_one()
         return UserModel.model_validate(orm, from_attributes=True)
-

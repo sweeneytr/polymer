@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from importlib.resources import files
 from itertools import count
 from logging import getLogger
 from pathlib import Path
@@ -13,14 +14,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .orm import Asset, Download, Tag, engine, Illustration, User
-from importlib.resources import files
+from .orm import Asset, Download, Illustration, Tag, User, engine
 
 logger = getLogger(__name__)
 
 TIME_ZONE = "America/New_York"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36"
-GRAPHQL = files(__package__).joinpath('cults.graphql').read_text()
+GRAPHQL = files(__package__).joinpath("cults.graphql").read_text()
 
 
 def _get_csrf(html: BeautifulSoup) -> str:
@@ -193,8 +193,7 @@ def asset_from_cults(session: Session, data) -> Asset:
     if not user:
         user = User(nickname=nick)
 
-    illustrations = [Illustration(src=i['imageUrl']) for i in data['illustrations']]
-
+    illustrations = [Illustration(src=i["imageUrl"]) for i in data["illustrations"]]
 
     return Asset(
         name=data["name"],
