@@ -116,6 +116,7 @@ async def asset_list(
     _end: int = 10,
     _order: str = "ASC",
     _sort: str = "id",
+    creator_id: int | None = None,
     tag_id: int | None = None,
     yanked: bool | None = None,
     downloaded: bool | None = None,
@@ -138,6 +139,9 @@ async def asset_list(
 
         if tag_id is not None:
             stmt = stmt.where(Asset.tag_ids.any(Tag.id == tag_id))
+
+        if creator_id is not None:
+            stmt = stmt.where(Asset.creator_id == creator_id)
 
         if q is not None:
             conds = [

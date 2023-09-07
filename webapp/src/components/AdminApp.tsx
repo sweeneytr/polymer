@@ -16,6 +16,8 @@ import {
   SingleFieldList,
   ChipField,
   ReferenceField,
+  Pagination,
+  ReferenceManyCount,
 } from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
 import {
@@ -117,6 +119,7 @@ export const TagList = () => (
     <Datagrid rowClick="show">
       <TextField source="id" />
       <TextField source="label" />
+      <ReferenceManyCount label="Assets" reference="assets" target="tag_id" />
     </Datagrid>
   </List>
 );
@@ -126,9 +129,10 @@ export const TagShow = () => (
     <SimpleShowLayout>
       <TextField source="id" />
       <TextField source="label" />
-      <ReferenceManyField label="Assets" reference="assets" target="tag_id">
-        <Datagrid rowClick="show">
+      <ReferenceManyField label="Assets" reference="assets" target="tag_id" pagination={<Pagination />}>
+        <Datagrid rowClick="show" >
           <TextField source="slug" />
+          <ReferenceField source="creator_id" reference="users" link="show" />
           <ReferenceArrayField reference="tags" source="tag_ids">
             <SingleFieldList linkType="show">
               <ChipField source="label" />
@@ -146,6 +150,7 @@ export const UserList = () => (
     <Datagrid rowClick="show">
       <TextField source="id" />
       <TextField source="nickname" />
+      <ReferenceManyCount label="Assets" reference="assets" target="creator_id" />
     </Datagrid>
   </List>
 );
@@ -156,7 +161,7 @@ export const UserShow = () => (
       <TextField source="id" />
       <TextField source="nickname" />
 
-      <ReferenceArrayField reference="assets" source="asset_ids">
+      <ReferenceArrayField reference="assets" source="asset_ids" pagination={<Pagination />}>
         <Datagrid rowClick="show">
           <TextField source="slug" />
           <ReferenceArrayField reference="tags" source="tag_ids">
