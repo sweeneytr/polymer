@@ -10,11 +10,11 @@ import httpx
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
 
+from .components.actor import Actor
+from .components.ingester import Ingester
+from .components.scraper import Scraper
 from .cults_client import CultsClient
-from .ingester import Ingester
 from .orm import engine
-from .actor import Actor
-from .scraper import Scraper
 
 logger = getLogger(__name__)
 
@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI) -> None:
         async with httpx.AsyncClient() as http_client, httpx.AsyncClient() as http_client_2:
             client = CultsClient(http_client)
             client_2 = CultsClient(http_client_2)
-            
+
             scraper = Scraper(client, queue)
             ingester = Ingester(ingester_session, queue)
             actor = Actor(client_2, actor_session)
@@ -91,5 +91,3 @@ async def lifespan(app: FastAPI) -> None:
             yield
 
             ingester_task.cancel()
-
-            

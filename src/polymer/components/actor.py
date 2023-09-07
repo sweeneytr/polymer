@@ -4,14 +4,17 @@ import aiometer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .cults_client import CultsClient
-from .orm import Asset, Download
+from ..cults_client import CultsClient
+from ..orm import Asset, Download
 
 logger = getLogger(__name__)
 
+
 class Actor:
     def __init__(
-        self, client: CultsClient, session: Session,
+        self,
+        client: CultsClient,
+        session: Session,
     ) -> None:
         self.client = client
         self.session = session
@@ -31,8 +34,6 @@ class Actor:
             max_per_second=0.5,  # Limit request rate to not overload the server.
         ):
             pass
-
-
 
     async def download_orders(self) -> None:
         downloadable = (
@@ -62,5 +63,5 @@ class Actor:
             downloadable,
             max_at_once=3,  # Limit maximum number of concurrently running tasks.
             max_per_second=0.5,  # Limit request rate to not overload the server.
-    ) as results:
-                pass
+        ) as results:
+            pass

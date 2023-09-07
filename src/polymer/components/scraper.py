@@ -1,8 +1,8 @@
 from asyncio import Queue
 from logging import getLogger
 
-from .cults_client import CultsClient
-from .cults_models import AssetFromCults, OrderFromCults
+from ..cults_client import CultsClient
+from ..cults_models import AssetFromCults, OrderFromCults
 
 logger = getLogger(__name__)
 

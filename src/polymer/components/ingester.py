@@ -7,8 +7,8 @@ from typing import Any, NoReturn
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .cults_models import AssetFromCults, OrderFromCults
-from .orm import Asset, Illustration, Tag, User
+from ..cults_models import AssetFromCults, OrderFromCults
+from ..orm import Asset, Illustration, Tag, User
 
 logger = getLogger(__name__)
 
@@ -68,7 +68,7 @@ class Ingester:
                     if asset is None:
                         asset = self.asset_from_cults(data)
                         self.session.add(asset)
-                    
+
                     logger.debug(f"Processed asset {asset.slug} from cults")
 
                 case OrderFromCults():
@@ -80,9 +80,8 @@ class Ingester:
                         self.session.add(asset)
 
                     asset.download_url = data.download_url
-                    
-                    logger.debug(f"Processed order for {asset.slug} from cults")
 
+                    logger.debug(f"Processed order for {asset.slug} from cults")
 
             self.session.commit()
 
