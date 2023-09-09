@@ -112,6 +112,7 @@ export const AssetShow = () => (
       <ReferenceArrayField reference="downloads" label="Downloads" source="download_ids">
         <Datagrid rowClick="show">
           <ChipField source='id'/>
+          <TextField source="filename" />
         </Datagrid>
       </ReferenceArrayField>
     </SimpleShowLayout>
@@ -277,6 +278,8 @@ export const DownloadList = () => (
   <List filters={downloadFilters}>
     <Datagrid rowClick="show">
       <TextField source="id" />
+      <ReferenceField reference="assets" source="asset_id" link="show" />
+      <TextField source="filename" />
     </Datagrid>
   </List>
 );
@@ -285,6 +288,8 @@ export const DownloadShow = () => (
   <Show>
     <SimpleShowLayout>
       <TextField source="id" />
+      <ReferenceField reference="assets" source="asset_id" link="show" />
+      <TextField source="filename" />
     </SimpleShowLayout>
   </Show>
 );

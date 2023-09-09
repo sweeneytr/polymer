@@ -50,6 +50,8 @@ class AssetModel(BaseModel):
 
 class DownloadModel(BaseModel):
     id: int
+    asset_id: int
+    filename: str
 
 
 class TagModel(BaseModel):
