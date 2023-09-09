@@ -109,6 +109,11 @@ export const AssetShow = () => (
       <UrlButton source="nab_url" label="Download" method="redirect">
         <DownloadForOfflineIcon />
       </UrlButton>
+      <ReferenceArrayField reference="downloads" label="Downloads" source="download_ids">
+        <Datagrid rowClick="show">
+          <ChipField source='id'/>
+        </Datagrid>
+      </ReferenceArrayField>
     </SimpleShowLayout>
   </Show>
 );
@@ -267,6 +272,24 @@ export const CategoryCreate = () => (
   </Create>
 );
 
+const downloadFilters = [<SearchInput source="q" alwaysOn />];
+export const DownloadList = () => (
+  <List filters={downloadFilters}>
+    <Datagrid rowClick="show">
+      <TextField source="id" />
+    </Datagrid>
+  </List>
+);
+
+export const DownloadShow = () => (
+  <Show>
+    <SimpleShowLayout>
+      <TextField source="id" />
+    </SimpleShowLayout>
+  </Show>
+);
+
+
 const UrlButton = ({
   source,
   method,
@@ -311,6 +334,12 @@ const AdminApp = () => {
         list={AssetList}
         show={AssetShow}
         recordRepresentation="name"
+      />
+      <Resource
+        name="downloads"
+        list={DownloadList}
+        show={DownloadShow}
+        recordRepresentation="id"
       />
       <Resource
         name="tags"

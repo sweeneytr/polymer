@@ -11,9 +11,9 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .lifespan import manager
-from .models import (AssetModel, CategoryCreate, CategoryModel, TagModel,
+from .models import (AssetModel, CategoryCreate, CategoryModel, DownloadModel, TagModel,
                      TaskModel, UserModel)
-from .orm import Asset, Category, Tag, User, engine
+from .orm import Asset, Category, Download, Tag, User, engine
 
 router = APIRouter()
 
@@ -102,6 +102,70 @@ async def asset(id: int) -> AssetModel:
         return AssetModel.model_validate(asset, from_attributes=True)
 
 
+@router.get("/assets/{id}/download")
+async def asset_download(id: str) -> Response:
+    with Session(engine) as session:
+        asset = session.execute(select(Asset).filter_by(id=id)).scalar_one()
+
+        if not asset.downloaded:
+            raise HTTPException(404)
+
+        path = Path(settings.download_dir, asset.slug)
+        filepath = next(path.iterdir())
+
+        return FileResponse(filepath, filename=filepath.name)
+
+
+@router.get("/downloads")
+async def downloads_list(
+    response: Response,
+    _start: int = 0,
+    _end: int = 10,
+    _order: str = "ASC",
+    _sort: str = "id",
+    asset_id: int | None = None,
+    q: str | None = None,
+    id: Annotated[list[int] | None, Query()] = None,
+) -> list[DownloadModel]:
+    with Session(engine) as session:
+        sort_field = getattr(Download, _sort)
+        stmt = select(Download)
+
+        if asset_id is not None:
+            stmt = stmt.where(Download.asset_id == asset_id)
+
+        if q is not None:
+            pass
+
+        if id is not None:
+            stmt = stmt.where(Download.id.in_(id))
+
+        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
+
+        if id is None:
+            stmt = stmt.offset(_start).limit(_end)
+
+        assets = (
+            session.execute(
+                stmt.order_by(
+                    sort_field.asc()
+                    if _order.casefold() == "asc".casefold()
+                    else sort_field.desc()
+                )
+            )
+            .scalars()
+            .all()
+        )
+        response.headers.append("X-Total-Count", str(count))
+        return [DownloadModel.model_validate(a, from_attributes=True) for a in assets]
+
+
+@router.get("/downloads/{id}")
+async def get_download(id: str) -> DownloadModel:
+    with Session(engine) as session:
+        orm = session.execute(select(Download).filter_by(id=id)).scalar_one()
+        return DownloadModel.model_validate(orm, from_attributes=True)
+
 @router.get("/tags")
 async def tag_list(
     response: Response,
@@ -147,20 +211,6 @@ async def tag(id: int) -> TagModel:
     with Session(engine) as session:
         tag = session.execute(select(Tag).filter_by(id=id)).scalar_one()
         return TagModel.model_validate(tag, from_attributes=True)
-
-
-@router.get("/assets/{id}/download")
-async def asset_download(id: str) -> Response:
-    with Session(engine) as session:
-        asset = session.execute(select(Asset).filter_by(id=id)).scalar_one()
-
-        if not asset.downloaded:
-            raise HTTPException(404)
-
-        path = Path(settings.download_dir, asset.slug)
-        filepath = next(path.iterdir())
-
-        return FileResponse(filepath, filename=filepath.name)
 
 
 @router.get("/tasks")

@@ -21,6 +21,7 @@ class AssetModel(BaseModel):
     creator: str = Field(validation_alias=AliasPath("creator", "nickname"))
     creator_id: int
     cents: int
+    download_ids: list[int]
     download_url: str | None
     yanked: bool
     downloaded: bool
@@ -46,6 +47,9 @@ class AssetModel(BaseModel):
             return None
 
         return str(request.url_for("asset_download", id=self.id))
+
+class DownloadModel(BaseModel):
+    id: int
 
 
 class TagModel(BaseModel):

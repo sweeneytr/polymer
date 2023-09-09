@@ -35,6 +35,7 @@ class Asset(Base):
     downloads: Mapped[list["Download"]] = relationship(
         back_populates="asset", cascade="all, delete-orphan"
     )
+    download_ids: AssociationProxy[list[int]] = association_proxy("downloads", "id")
 
     illustrations: Mapped[list["Illustration"]] = relationship(
         back_populates="asset",
@@ -49,7 +50,7 @@ class Asset(Base):
     tags: Mapped[list["Tag"]] = relationship(
         back_populates="assets", secondary=tag_association_table
     )
-    tag_ids: AssociationProxy[list[str]] = association_proxy("tags", "id")
+    tag_ids: AssociationProxy[list[int]] = association_proxy("tags", "id")
 
     @property
     def primary_illustration(self) -> Optional["Illustration"]:

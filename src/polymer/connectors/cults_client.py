@@ -128,15 +128,18 @@ class CultsGraphQLClient:
         self.client = client
 
     async def graphql(self, operation: str, **variables: str) -> Any:
-        res = await self.client.post(
-            "https://cults3d.com/graphql",
-            auth=(self.nickname, self.api_key),
-            json={
-                "query": GRAPHQL,
-                "operationName": operation,
-                "variables": variables,
-            },
-        )
+        try:
+            res = await self.client.post(
+                "https://cults3d.com/graphql",
+                auth=(self.nickname, self.api_key),
+                json={
+                    "query": GRAPHQL,
+                    "operationName": operation,
+                    "variables": variables,
+                },
+            )
+        except httpx.ReadTimeout as e:
+            raise RuntimeError("GraphQL timed out") from e
         res.raise_for_status()
         return res.json()
 
