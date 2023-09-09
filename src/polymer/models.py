@@ -75,3 +75,14 @@ class TaskModel(BaseModel):
             return None
 
         return str(request.url_for("task_run", id=self.id))
+
+class CategoryCreate(BaseModel):
+    parent_id: int | None = None
+    label: str
+
+
+class CategoryModel(BaseModel):
+    id: int
+    parent_id: int | None
+    child_ids: list[int]
+    label: str

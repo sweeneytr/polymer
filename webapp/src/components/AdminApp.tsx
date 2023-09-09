@@ -18,6 +18,9 @@ import {
   ReferenceField,
   Pagination,
   ReferenceManyCount,
+  Create,
+  SimpleForm,
+  TextInput,
 } from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
 import {
@@ -228,6 +231,26 @@ export const TaskList = () => (
   </List>
 );
 
+const categoryFilters = [<SearchInput source="q" alwaysOn />];
+export const CategoryList = () => (
+  <List filters={categoryFilters}>
+    <Datagrid rowClick="show">
+      <TextField source="id" />
+      <TextField source="label" />
+    </Datagrid>
+  </List>
+);
+
+
+export const CategoryCreate = () => (
+  <Create >
+    <SimpleForm>
+      <TextInput source="parent_id" />
+      <TextInput source="label" />
+    </SimpleForm>
+  </Create>
+);
+
 const UrlButton = ({
   source,
   method,
@@ -285,6 +308,12 @@ const AdminApp = () => {
         list={UserList}
         show={UserShow}
         recordRepresentation="nickname"
+      />
+      <Resource
+        name="categories"
+        list={CategoryList}
+        create={CategoryCreate}
+        recordRepresentation="label"
       />
     </Admin>
   );

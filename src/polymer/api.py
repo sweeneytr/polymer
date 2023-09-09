@@ -4,15 +4,15 @@ from logging import getLogger
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query, Response, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .lifespan import manager
-from .models import AssetModel, TagModel, TaskModel, UserModel
-from .orm import Asset, Tag, User, engine
+from .models import AssetModel, TagModel, TaskModel, UserModel, CategoryModel, CategoryCreate
+from .orm import Asset, Tag, User, Category, engine
 
 router = APIRouter()
 
@@ -236,3 +236,65 @@ async def asset(id: int) -> UserModel:
     with Session(engine) as session:
         orm = session.execute(select(User).filter_by(id=id)).scalar_one()
         return UserModel.model_validate(orm, from_attributes=True)
+
+@router.get("/categories")
+async def catagory_list(
+    response: Response,
+    _start: int = 0,
+    _end: int = 10,
+    _order: str = "ASC",
+    _sort: str = "id",
+    q: str | None = None,
+    id: Annotated[list[int] | None, Query()] = None,
+) -> list[CategoryModel]:
+    with Session(engine) as session:
+        sort_field = getattr(Category, _sort)
+        stmt = select(Category)
+
+        if q is not None:
+            stmt = stmt.where(Category.label.ilike(f"%{q}%"))
+
+        if id is not None:
+            stmt = stmt.where(Category.id.in_(id))
+
+        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
+
+        if id is None:
+            stmt = stmt.offset(_start).limit(_end)
+
+        orms = (
+            session.execute(
+                stmt.order_by(
+                    sort_field.asc()
+                    if _order.casefold() == "asc".casefold()
+                    else sort_field.desc()
+                )
+            )
+            .scalars()
+            .all()
+        )
+        response.headers.append("X-Total-Count", str(count))
+        return [CategoryModel.model_validate(a, from_attributes=True) for a in orms]
+
+
+
+
+@router.post("/categories", status_code=201)
+async def catagory_create(
+    request: Request, response: Response, body: CategoryCreate) -> CategoryModel:
+    with Session(engine) as session:
+        category = Category(label=body.label, parent_id=body.parent_id)
+        session.add(category)
+        session.commit()
+
+        response.headers.append("Location", str(request.url_for('get_category', id=category.id)))
+        
+        return CategoryModel.model_validate(category, from_attributes=True)
+    
+    
+
+@router.get("/categories/{id}")
+async def get_category(id: int) -> CategoryModel:
+    with Session(engine) as session:
+        orm = session.execute(select(Category).filter_by(id=id)).scalar_one()
+        return CategoryModel.model_validate(orm, from_attributes=True)
