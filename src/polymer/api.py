@@ -60,12 +60,13 @@ async def asset_list(
                 for f in (
                     Asset.slug,
                     Asset.name,
-                    Asset.creator,
                     Asset.description,
                     Asset.details,
                 )
             ]
             stmt = stmt.where(reduce(lambda a, b: or_(a, b), conds))
+            stmt = stmt.where(
+                    Asset.creator.has(User.nickname.ilike(f'%{q}%')))
 
         if id is not None:
             stmt = stmt.where(Asset.id.in_(id))
@@ -298,3 +299,12 @@ async def get_category(id: int) -> CategoryModel:
     with Session(engine) as session:
         orm = session.execute(select(Category).filter_by(id=id)).scalar_one()
         return CategoryModel.model_validate(orm, from_attributes=True)
+
+@router.delete("/categories/{id}")
+async def delete_category(id: int) -> CategoryModel:
+    with Session(engine) as session:
+        orm = session.execute(select(Category).filter_by(id=id)).scalar_one()
+        resp = CategoryModel.model_validate(orm, from_attributes=True)
+        session.delete(orm)
+        session.commit()
+        return resp

@@ -4,7 +4,7 @@ import aiometer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..cults_client import CultsClient
+from ..connectors.cults_client import CultsClient
 from ..orm import Asset, Download
 
 logger = getLogger(__name__)

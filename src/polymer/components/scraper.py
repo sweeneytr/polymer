@@ -1,15 +1,15 @@
 from asyncio import Queue
 from logging import getLogger
 
-from ..cults_client import CultsClient
-from ..cults_models import AssetFromCults, OrderFromCults
+from ..connectors.cults_client import CultsGraphQLClient
+from ..connectors.cults_models import AssetFromCults, OrderFromCults
 
 logger = getLogger(__name__)
 
 
 class Scraper:
     def __init__(
-        self, client: CultsClient, queue: Queue[AssetFromCults | OrderFromCults]
+        self, client: CultsGraphQLClient, queue: Queue[AssetFromCults | OrderFromCults]
     ) -> None:
         self.client = client
         self.queue = queue

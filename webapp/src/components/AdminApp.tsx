@@ -21,6 +21,7 @@ import {
   Create,
   SimpleForm,
   TextInput,
+  ReferenceInput,
 } from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
 import {
@@ -241,11 +242,26 @@ export const CategoryList = () => (
   </List>
 );
 
+export const CategoryShow = () => (
+  <Show>
+    <SimpleShowLayout>
+      <TextField source="id" />
+      <ReferenceField reference="categories" source="parent_id" link="show"/>
+      <ReferenceArrayField reference="categories" source="child_ids">
+        
+      <SingleFieldList linkType="show">
+              <ChipField source="label" />
+            </SingleFieldList>
+            </ReferenceArrayField>
+      <TextField source="label" />
+    </SimpleShowLayout>
+  </Show>
+);
 
 export const CategoryCreate = () => (
   <Create >
     <SimpleForm>
-      <TextInput source="parent_id" />
+      <ReferenceInput reference="categories" source="parent_id" />
       <TextInput source="label" />
     </SimpleForm>
   </Create>
@@ -313,6 +329,7 @@ const AdminApp = () => {
         name="categories"
         list={CategoryList}
         create={CategoryCreate}
+        show={CategoryShow}
         recordRepresentation="label"
       />
     </Admin>

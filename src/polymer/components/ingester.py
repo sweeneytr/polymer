@@ -2,12 +2,12 @@
 
 from asyncio import Queue
 from logging import getLogger
-from typing import Any, NoReturn
+from typing import NoReturn
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..cults_models import AssetFromCults, OrderFromCults
+from ..connectors.cults_models import AssetFromCults, OrderFromCults
 from ..orm import Asset, Illustration, Tag, User
 
 logger = getLogger(__name__)

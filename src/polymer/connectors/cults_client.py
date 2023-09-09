@@ -8,7 +8,7 @@ import httpx
 import pyrfc6266
 from bs4 import BeautifulSoup
 
-from .config import settings
+from ..config import settings
 
 logger = getLogger(__name__)
 
@@ -42,8 +42,6 @@ class CultsInfra:
         self.password = settings.password
         self.time_zone = TIME_ZONE
         self.user_agent = USER_AGENT
-        self.nickname = settings.nickname
-        self.api_key = settings.apikey
 
     async def login(self) -> None:
         html = await self.get_parsed("https://cults3d.com/en/users/sign-in")
@@ -88,19 +86,6 @@ class CultsInfra:
             res.raise_for_status()
         return BeautifulSoup(res.text, "html.parser")
 
-    async def graphql(self, operation: str, **variables: str) -> Any:
-        res = await self.client.post(
-            "https://cults3d.com/graphql",
-            auth=(self.nickname, self.api_key),
-            json={
-                "query": GRAPHQL,
-                "operationName": operation,
-                "variables": variables,
-            },
-        )
-        res.raise_for_status()
-        return res.json()
-
 
 class CultsClient(CultsInfra):
     async def _free_order(self, creation: str) -> None:
@@ -130,6 +115,26 @@ class CultsClient(CultsInfra):
                     f.write(chunk)
 
         return filename
+
+
+class CultsGraphQLClient:
+    def __init__(self, client: httpx.AsyncClient) -> None:
+        self.nickname = settings.nickname
+        self.api_key = settings.apikey
+        self.client = client
+
+    async def graphql(self, operation: str, **variables: str) -> Any:
+        res = await self.client.post(
+            "https://cults3d.com/graphql",
+            auth=(self.nickname, self.api_key),
+            json={
+                "query": GRAPHQL,
+                "operationName": operation,
+                "variables": variables,
+            },
+        )
+        res.raise_for_status()
+        return res.json()
 
     async def _get_orders(self) -> list:
         _result = []

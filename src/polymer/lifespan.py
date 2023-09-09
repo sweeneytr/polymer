@@ -10,10 +10,12 @@ import httpx
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
 
+from polymer.connectors.cults_client import CultsGraphQLClient
+
 from .components.actor import Actor
 from .components.ingester import Ingester
 from .components.scraper import Scraper
-from .cults_client import CultsClient
+from .connectors.cults_client import CultsClient, CultsGraphQLClient
 from .orm import engine
 
 logger = getLogger(__name__)
@@ -63,7 +65,6 @@ class TaskManager:
 
 
 manager = TaskManager()
-
 minutely = "* * * * *"
 
 
@@ -74,11 +75,11 @@ async def lifespan(app: FastAPI) -> None:
     with Session(engine) as ingester_session, Session(engine) as actor_session:
         async with httpx.AsyncClient() as http_client, httpx.AsyncClient() as http_client_2:
             client = CultsClient(http_client)
-            client_2 = CultsClient(http_client_2)
+            client_ql = CultsGraphQLClient(http_client_2)
 
-            scraper = Scraper(client, queue)
+            scraper = Scraper(client_ql, queue)
             ingester = Ingester(ingester_session, queue)
-            actor = Actor(client_2, actor_session)
+            actor = Actor(client, actor_session)
 
             manager.register(scraper.fetch_liked, minutely, startup=True)
             manager.register(scraper.fetch_orders, minutely)
