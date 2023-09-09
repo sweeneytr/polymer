@@ -76,6 +76,7 @@ class TaskModel(BaseModel):
 
         return str(request.url_for("task_run", id=self.id))
 
+
 class CategoryCreate(BaseModel):
     parent_id: int | None = None
     label: str

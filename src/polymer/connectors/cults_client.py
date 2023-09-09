@@ -44,7 +44,9 @@ class CultsInfra:
         self.user_agent = USER_AGENT
 
     async def login(self) -> None:
-        html = await self.get_parsed("https://cults3d.com/en/users/sign-in")
+        html = await self.get_parsed(
+            "https://cults3d.com/en/users/sign-in", follow_redirects=True
+        )
 
         # Session state is cookie based, just need to post a sign-in
         await self.post_parsed(
@@ -59,8 +61,10 @@ class CultsInfra:
             follow_redirects=True,
         )
 
-    async def get_parsed(self, url: str) -> BeautifulSoup:
-        res = await self.client.get(url)
+    async def get_parsed(
+        self, url: str, follow_redirects: bool = False
+    ) -> BeautifulSoup:
+        res = await self.client.get(url, follow_redirects=follow_redirects)
         res.raise_for_status()
         return BeautifulSoup(res.text, "html.parser")
 

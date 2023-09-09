@@ -68,15 +68,19 @@ class Asset(Base):
     def _downloaded_expression(cls) -> ColumnElement[bool]:
         return type_coerce(cls.downloads.any(), Boolean)
 
+
 class Category(Base):
     __tablename__ = "category"
     id: Mapped[int] = mapped_column(primary_key=True)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("category.id"))
     children: Mapped[list["Category"]] = relationship(back_populates="parent")
-    parent: Mapped[Optional["Category"]] = relationship(back_populates="children", remote_side=[id])
+    parent: Mapped[Optional["Category"]] = relationship(
+        back_populates="children", remote_side=[id]
+    )
     label: Mapped[str]
 
     child_ids: AssociationProxy[int] = association_proxy("children", "id")
+
 
 class Tag(Base):
     __tablename__ = "tag"
