@@ -16,7 +16,7 @@ from .components.actor import Actor
 from .components.ingester import Ingester
 from .components.scraper import Scraper
 from .connectors.cults_client import CultsClient, CultsGraphQLClient
-from .orm import engine
+from .orms import engine
 
 logger = getLogger(__name__)
 

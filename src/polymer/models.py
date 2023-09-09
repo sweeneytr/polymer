@@ -48,6 +48,7 @@ class AssetModel(BaseModel):
 
         return str(request.url_for("asset_download", id=self.id))
 
+
 class DownloadModel(BaseModel):
     id: int
     asset_id: int

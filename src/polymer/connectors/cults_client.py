@@ -139,7 +139,7 @@ class CultsGraphQLClient:
                 },
             )
         except httpx.ReadTimeout as e:
-            raise RuntimeError("GraphQL timed out") from e
+            raise RuntimeError(f"GraphQL timed out, {operation=} {variables=}") from e
         res.raise_for_status()
         return res.json()
 

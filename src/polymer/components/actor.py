@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..connectors.cults_client import CultsClient
-from ..orm import Asset, Download
+from ..orms import Asset, Download
 
 logger = getLogger(__name__)
 
