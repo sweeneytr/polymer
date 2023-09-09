@@ -1,70 +1,94 @@
 import datetime
+from dataclasses import dataclass
 from functools import reduce
 from logging import getLogger
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, Self, TypeVar
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .lifespan import manager
-from .models import (
-    AssetModel,
-    CategoryCreate,
-    CategoryModel,
-    DownloadModel,
-    TagModel,
-    TaskModel,
-    UserModel,
-)
+from .models import (AssetModel, CategoryCreate, CategoryModel, DownloadModel,
+                     TagModel, TaskModel, UserModel)
 from .orms import Asset, Category, Download, Tag, User, engine
-
-router = APIRouter()
-
 
 logger = getLogger(__name__)
 
+router = APIRouter()
 
-@router.get("/assets")
-async def asset_list(
-    response: Response,
-    _start: int = 0,
-    _end: int = 10,
-    _order: str = "ASC",
-    _sort: str = "id",
-    creator_id: int | None = None,
-    tag_id: int | None = None,
-    yanked: bool | None = None,
-    downloaded: bool | None = None,
-    free: bool | None = None,
-    q: str | None = None,
-    id: Annotated[list[int] | None, Query()] = None,
-) -> list[AssetModel]:
-    with Session(engine) as session:
-        sort_field = getattr(Asset, _sort)
-        stmt = select(Asset)
+T = TypeVar("T")
 
-        if yanked is not None:
-            stmt = stmt.filter_by(yanked=yanked)
 
-        if downloaded is not None:
-            stmt = stmt.filter_by(downloaded=downloaded)
+@dataclass
+class Pagination:
+    _start: int
+    _end: int
 
-        if free is not None:
-            stmt = stmt.filter_by(free=free)
+    @classmethod
+    def get(
+        cls,
+        _start: Annotated[int | None, Query()] = None,
+        _end: Annotated[int | None, Query()] = None,
+    ) -> Self | None:
+        if _start is not None and _end is not None:
+            return cls(_start, _end)
 
-        if tag_id is not None:
-            stmt = stmt.where(Asset.tag_ids.any(Tag.id == tag_id))
+        return None
 
-        if creator_id is not None:
-            stmt = stmt.where(Asset.creator_id == creator_id)
+    def apply(self, stmt: Select[T]) -> Select[T]:
+        return stmt.offset(self._start).limit(self._end)
 
-        if q is not None:
+
+@dataclass
+class Sort:
+    _order: Annotated[str, Query()] = "ASC"
+    _sort: Annotated[str, Query()] = "id"
+
+    def apply(self, cls: Any, stmt: Select[T]) -> Select[T]:
+        sort_field = getattr(cls, self._sort, None)
+        if sort_field is None:
+            raise HTTPException(422, f"Unknown sort field {self._sort}")
+
+        return stmt.order_by(
+            sort_field.asc()
+            if self._order.casefold() == "asc".casefold()
+            else sort_field.desc()
+        )
+
+
+@dataclass
+class UserSearch:
+    creator_id: int | None = None
+    tag_id: int | None = None
+    yanked: bool | None = None
+    downloaded: bool | None = None
+    free: bool | None = None
+    q: str | None = None
+    id: Annotated[list[int] | None, Query()] = None
+
+    def apply(self, stmt: Select[T]) -> Select[T]:
+        if self.yanked is not None:
+            stmt = stmt.filter_by(yanked=self.yanked)
+
+        if self.downloaded is not None:
+            stmt = stmt.filter_by(downloaded=self.downloaded)
+
+        if self.free is not None:
+            stmt = stmt.filter_by(free=self.free)
+
+        if self.tag_id is not None:
+            stmt = stmt.where(Asset.tag_ids.any(Tag.id == self.tag_id))
+
+        if self.creator_id is not None:
+            stmt = stmt.where(Asset.creator_id == self.creator_id)
+
+        if self.q is not None:
             conds = [
-                f.ilike(f"%{q}%")
+                f.ilike(f"%{self.q}%")
                 for f in (
                     Asset.slug,
                     Asset.name,
@@ -75,31 +99,38 @@ async def asset_list(
             stmt = stmt.where(
                 or_(
                     reduce(lambda a, b: or_(a, b), conds),
-                    Asset.creator.has(User.nickname.ilike(f"%{q}%")),
+                    Asset.creator.has(User.nickname.ilike(f"%{self.q}%")),
                 )
             )
 
-        if id is not None:
-            stmt = stmt.where(Asset.id.in_(id))
+        if self.id is not None:
+            stmt = stmt.where(Asset.id.in_(self.id))
+
+        return stmt
+
+
+@router.get("/assets")
+async def asset_list(
+    response: Response,
+    pagination: Annotated[Pagination | None, Depends(Pagination.get)],
+    sort: Annotated[Sort, Depends()],
+    search: Annotated[UserSearch, Depends()],
+) -> list[AssetModel]:
+    with Session(engine) as session:
+        stmt = select(Asset)
+        stmt = search.apply(stmt)
 
         count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
 
-        if id is None:
-            stmt = stmt.offset(_start).limit(_end)
+        if pagination is not None:
+            stmt = pagination.apply(stmt)
 
-        assets = (
-            session.execute(
-                stmt.order_by(
-                    sort_field.asc()
-                    if _order.casefold() == "asc".casefold()
-                    else sort_field.desc()
-                )
-            )
-            .scalars()
-            .all()
-        )
+        stmt = sort.apply(Asset, stmt)
+
+        orms = session.execute(stmt).scalars().all()
+
         response.headers.append("X-Total-Count", str(count))
-        return [AssetModel.model_validate(a, from_attributes=True) for a in assets]
+        return [AssetModel.model_validate(o, from_attributes=True) for o in orms]
 
 
 @router.get("/assets/{id}")
