@@ -32,13 +32,13 @@ class Asset(Base):
     download_ids: AssociationProxy[list[int]] = association_proxy("downloads", "id")
 
     illustrations: Mapped[list["Illustration"]] = relationship(
-        back_populates="asset",
-        cascade="all, delete-orphan",
+        back_populates="asset", cascade="all, delete-orphan"
+    )
+    illustration_ids: AssociationProxy[list[int]] = association_proxy(
+        "illustrations", "id"
     )
 
-    creator: Mapped["User"] = relationship(
-        back_populates="assets",
-    )
+    creator: Mapped["User"] = relationship(back_populates="assets")
 
     tags: Mapped[list["Tag"]] = relationship(
         back_populates="assets", secondary=tag_association_table

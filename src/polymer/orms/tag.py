@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
 from ._base import Base, tag_association_table
 
@@ -16,3 +17,4 @@ class Tag(Base):
     assets: Mapped[list["Asset"]] = relationship(
         back_populates="tags", secondary=tag_association_table
     )
+    asset_ids: AssociationProxy[list[int]] = association_proxy("tags", "id")

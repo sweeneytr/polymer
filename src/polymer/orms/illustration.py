@@ -15,9 +15,7 @@ class Illustration(Base):
     asset_id: Mapped[str] = mapped_column(ForeignKey("asset.id"))
     src: Mapped[str]
 
-    asset: Mapped["Asset"] = relationship(
-        back_populates="illustrations", foreign_keys=[asset_id]
-    )
+    asset: Mapped["Asset"] = relationship(back_populates="illustrations")
 
     @property
     def model(self) -> dict:

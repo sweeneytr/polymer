@@ -11,10 +11,11 @@ class Category(Base):
     __tablename__ = "category"
     id: Mapped[int] = mapped_column(primary_key=True)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("category.id"))
+    label: Mapped[str]
+
     children: Mapped[list["Category"]] = relationship(back_populates="parent")
+    child_ids: AssociationProxy[int] = association_proxy("children", "id")
+
     parent: Mapped[Optional["Category"]] = relationship(
         back_populates="children", remote_side=[id]
     )
-    label: Mapped[str]
-
-    child_ids: AssociationProxy[int] = association_proxy("children", "id")
