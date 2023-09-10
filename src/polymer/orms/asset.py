@@ -2,15 +2,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Optional, Self, TypeVar
 
 from fastapi import HTTPException, Query
-from sqlalchemy import (
-    Boolean,
-    ColumnElement,
-    ForeignKey,
-    Select,
-    or_,
-    select,
-    type_coerce,
-)
+from sqlalchemy import (Boolean, ColumnElement, ForeignKey, Select, or_,
+                        select, type_coerce)
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -114,6 +107,7 @@ class Asset(Base):
 
         if search.q is not None:
             from .user import User
+
             stmt = stmt.where(
                 or_(
                     *(

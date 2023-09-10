@@ -3,10 +3,11 @@ from dataclasses import dataclass
 from functools import reduce
 from logging import getLogger
 from pathlib import Path
-from typing import Annotated, Any, Self, TypeVar
+from typing import Annotated, Any, Iterable, Self, Type, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -19,15 +20,8 @@ from polymer.orms.user import UserSearch, UserSort
 
 from .config import settings
 from .lifespan import manager
-from .models import (
-    AssetModel,
-    CategoryCreate,
-    CategoryModel,
-    DownloadModel,
-    TagModel,
-    TaskModel,
-    UserModel,
-)
+from .models import (AssetModel, CategoryCreate, CategoryModel, DownloadModel,
+                     TagModel, TaskModel, UserModel)
 from .orms import Asset, Category, Download, Tag, User, engine
 
 logger = getLogger(__name__)
@@ -35,6 +29,7 @@ logger = getLogger(__name__)
 router = APIRouter()
 
 T = TypeVar("T")
+M = TypeVar("M", bound=BaseModel)
 
 
 def db_proxy():
@@ -80,20 +75,30 @@ class Sort:
         )
 
 
+class Pager:
+    def __init__(
+        self, response: Response, db: DbProxyDep, pagination: PaginationDep
+    ) -> None:
+        self.response = response
+        self.db = db
+        self.pagination = pagination
+
+    def __call__(self, Model: Type[M], stmt: Iterable[Any]) -> Iterable[M]:
+        count = self.db.count(stmt)
+        orms = self.db.all_or_paginated(stmt, self.pagination)
+
+        self.response.headers.append("X-Total-Count", str(count))
+        return [Model.model_validate(o, from_attributes=True) for o in orms]
+
+
 @router.get("/assets")
 async def asset_list(
-    response: Response,
-    db: DbProxyDep,
-    pagination: PaginationDep,
+    pager: Annotated[Pager, Depends()],
     sort: Annotated[AssetSort, Depends()],
     search: Annotated[AssetSearch, Depends()],
 ) -> list[AssetModel]:
     stmt = Asset.select_all(search, sort)
-    count = db.count(stmt)
-    orms = db.all_or_paginated(stmt, pagination)
-
-    response.headers.append("X-Total-Count", str(count))
-    return [AssetModel.model_validate(o, from_attributes=True) for o in orms]
+    return pager(AssetModel, stmt)
 
 
 @router.get("/assets/{id}")
@@ -117,18 +122,12 @@ async def asset_download(id: str, db: DbProxyDep) -> Response:
 
 @router.get("/downloads")
 async def downloads_list(
-    response: Response,
-    db: DbProxyDep,
-    pagination: PaginationDep,
+    pager: Annotated[Pager, Depends()],
     sort: Annotated[DownloadSort, Depends()],
     search: Annotated[DownloadSearch, Depends()],
 ) -> list[DownloadModel]:
     stmt = Download.select_all(search, sort)
-    count = db.count(stmt)
-    orms = db.all_or_paginated(stmt, pagination)
-
-    response.headers.append("X-Total-Count", str(count))
-    return [DownloadModel.model_validate(o, from_attributes=True) for o in orms]
+    return pager(DownloadModel, stmt)
 
 
 @router.get("/downloads/{id}")
@@ -139,18 +138,12 @@ async def get_download(id: str, db: DbProxyDep) -> DownloadModel:
 
 @router.get("/tags")
 async def tag_list(
-    response: Response,
-    db: DbProxyDep,
-    pagination: PaginationDep,
+    pager: Annotated[Pager, Depends()],
     sort: Annotated[TagSort, Depends()],
     search: Annotated[TagSearch, Depends()],
 ) -> list[TagModel]:
     stmt = Tag.select_all(search, sort)
-    count = db.count(stmt)
-    orms = db.all_or_paginated(stmt, pagination)
-
-    response.headers.append("X-Total-Count", str(count))
-    return [TagModel.model_validate(o, from_attributes=True) for o in orms]
+    return pager(TagModel, stmt)
 
 
 @router.get("/tags/{id}")
@@ -194,18 +187,12 @@ async def task_run(id: int) -> None:
 
 @router.get("/users")
 async def users_list(
-    response: Response,
-    db: DbProxyDep,
-    pagination: PaginationDep,
+    pager: Annotated[Pager, Depends()],
     sort: Annotated[UserSort, Depends()],
     search: Annotated[UserSearch, Depends()],
 ) -> list[UserModel]:
     stmt = User.select_all(search, sort)
-    count = db.count(stmt)
-    orms = db.all_or_paginated(stmt, pagination)
-
-    response.headers.append("X-Total-Count", str(count))
-    return [UserModel.model_validate(o, from_attributes=True) for o in orms]
+    return pager(UserModel, stmt)
 
 
 @router.get("/users/{id}")
@@ -216,18 +203,12 @@ async def asset(id: int, db: DbProxyDep) -> UserModel:
 
 @router.get("/categories")
 async def catagory_list(
-    response: Response,
-    db: DbProxyDep,
-    pagination: PaginationDep,
+    pager: Annotated[Pager, Depends()],
     sort: Annotated[CategorySort, Depends()],
     search: Annotated[CategorySearch, Depends()],
 ) -> list[CategoryModel]:
     stmt = Category.select_all(search, sort)
-    count = db.count(stmt)
-    orms = db.all_or_paginated(stmt, pagination)
-
-    response.headers.append("X-Total-Count", str(count))
-    return [CategoryModel.model_validate(o, from_attributes=True) for o in orms]
+    return pager(CategoryModel, stmt)
 
 
 @router.post("/categories", status_code=201)
