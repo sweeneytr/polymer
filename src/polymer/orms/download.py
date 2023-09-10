@@ -43,13 +43,13 @@ class Download(Base):
     @classmethod
     def search(cls, stmt: Select[T], search: DownloadSearch) -> Select[T]:
         if search.asset_id is not None:
-            stmt = stmt.where(Download.asset_id == search.asset_id)
+            stmt = stmt.where(cls.asset_id == search.asset_id)
 
         if search.q is not None:
             pass
 
         if search.id is not None:
-            stmt = stmt.where(Download.id.in_(search.id))
+            stmt = stmt.where(cls.id.in_(search.id))
 
         return stmt
 

@@ -94,6 +94,9 @@ class Asset(Base):
 
     @classmethod
     def search(cls, stmt: Select[T], search: AssetSearch) -> Select[T]:
+        from .tag import Tag
+        from .user import User
+
         if search.yanked is not None:
             stmt = stmt.filter_by(yanked=search.yanked)
 
