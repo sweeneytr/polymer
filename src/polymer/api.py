@@ -1,6 +1,5 @@
 import datetime
 from dataclasses import dataclass
-from functools import reduce
 from logging import getLogger
 from pathlib import Path
 from typing import Annotated, Any, Iterable, Self, Type, TypeVar
@@ -8,15 +7,10 @@ from typing import Annotated, Any, Iterable, Self, Type, TypeVar
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select
 from sqlalchemy.orm import Session
 
 from polymer.connectors.db import DbProxy
-from polymer.orms.asset import AssetSearch, AssetSort
-from polymer.orms.category import CategorySearch, CategorySort
-from polymer.orms.download import DownloadSearch, DownloadSort
-from polymer.orms.tag import TagSearch, TagSort
-from polymer.orms.user import UserSearch, UserSort
 
 from .config import settings
 from .lifespan import manager
@@ -94,10 +88,8 @@ class Pager:
 @router.get("/assets")
 async def asset_list(
     pager: Annotated[Pager, Depends()],
-    sort: Annotated[AssetSort, Depends()],
-    search: Annotated[AssetSearch, Depends()],
+    stmt: Annotated[Select[tuple[Asset]], Depends(Asset.select_all)],
 ) -> list[AssetModel]:
-    stmt = Asset.select_all(search, sort)
     return pager(AssetModel, stmt)
 
 
@@ -123,10 +115,8 @@ async def asset_download(id: str, db: DbProxyDep) -> Response:
 @router.get("/downloads")
 async def downloads_list(
     pager: Annotated[Pager, Depends()],
-    sort: Annotated[DownloadSort, Depends()],
-    search: Annotated[DownloadSearch, Depends()],
+    stmt: Annotated[Select[tuple[Download]], Depends(Download.select_all)],
 ) -> list[DownloadModel]:
-    stmt = Download.select_all(search, sort)
     return pager(DownloadModel, stmt)
 
 
@@ -139,10 +129,8 @@ async def get_download(id: str, db: DbProxyDep) -> DownloadModel:
 @router.get("/tags")
 async def tag_list(
     pager: Annotated[Pager, Depends()],
-    sort: Annotated[TagSort, Depends()],
-    search: Annotated[TagSearch, Depends()],
+    stmt: Annotated[Select[tuple[Tag]], Depends(Tag.select_all)],
 ) -> list[TagModel]:
-    stmt = Tag.select_all(search, sort)
     return pager(TagModel, stmt)
 
 
@@ -188,26 +176,22 @@ async def task_run(id: int) -> None:
 @router.get("/users")
 async def users_list(
     pager: Annotated[Pager, Depends()],
-    sort: Annotated[UserSort, Depends()],
-    search: Annotated[UserSearch, Depends()],
+    stmt: Annotated[Select[tuple[User]], Depends(User.select_all)],
 ) -> list[UserModel]:
-    stmt = User.select_all(search, sort)
     return pager(UserModel, stmt)
 
 
 @router.get("/users/{id}")
 async def asset(id: int, db: DbProxyDep) -> UserModel:
-    orm = db.one(select(User).filter_by(id=id))
+    orm = db.one(User.select_one(id))
     return UserModel.model_validate(orm, from_attributes=True)
 
 
 @router.get("/categories")
 async def catagory_list(
     pager: Annotated[Pager, Depends()],
-    sort: Annotated[CategorySort, Depends()],
-    search: Annotated[CategorySearch, Depends()],
+    stmt: Annotated[Select[tuple[Category]], Depends(Category.select_all)],
 ) -> list[CategoryModel]:
-    stmt = Category.select_all(search, sort)
     return pager(CategoryModel, stmt)
 
 
@@ -228,13 +212,13 @@ async def catagory_create(
 
 @router.get("/categories/{id}")
 async def get_category(id: int, db: DbProxyDep) -> CategoryModel:
-    orm = db.one(select(Category).filter_by(id=id))
+    orm = db.one(Category.select_one(id))
     return CategoryModel.model_validate(orm, from_attributes=True)
 
 
 @router.delete("/categories/{id}")
 async def delete_category(id: int, db: DbProxyDep) -> CategoryModel:
-    orm = db.one(select(Category).filter_by(id=id))
+    orm = db.one(Category.select_one(id))
     resp = CategoryModel.model_validate(orm, from_attributes=True)
     db.delete(orm)
     db.commit()
