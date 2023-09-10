@@ -10,10 +10,24 @@ from fastapi.responses import FileResponse
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
+from polymer.connectors.db import DbProxy
+from polymer.orms.asset import AssetSearch, AssetSort
+from polymer.orms.category import CategorySearch, CategorySort
+from polymer.orms.download import DownloadSearch, DownloadSort
+from polymer.orms.tag import TagSearch, TagSort
+from polymer.orms.user import UserSearch, UserSort
+
 from .config import settings
 from .lifespan import manager
-from .models import (AssetModel, CategoryCreate, CategoryModel, DownloadModel,
-                     TagModel, TaskModel, UserModel)
+from .models import (
+    AssetModel,
+    CategoryCreate,
+    CategoryModel,
+    DownloadModel,
+    TagModel,
+    TaskModel,
+    UserModel,
+)
 from .orms import Asset, Category, Download, Tag, User, engine
 
 logger = getLogger(__name__)
@@ -23,10 +37,15 @@ router = APIRouter()
 T = TypeVar("T")
 
 
+def db_proxy(session):
+    with Session(engine) as session:
+        yield DbProxy(session)
+
+
 @dataclass
 class Pagination:
-    _start: int
-    _end: int
+    offset: int
+    limit: int
 
     @classmethod
     def get(
@@ -39,8 +58,9 @@ class Pagination:
 
         return None
 
-    def apply(self, stmt: Select[T]) -> Select[T]:
-        return stmt.offset(self._start).limit(self._end)
+
+DbProxyDep = Annotated[DbProxy, Depends(db_proxy)]
+PaginationDep = Annotated[Pagination | None, Depends(Pagination.get)]
 
 
 @dataclass
@@ -60,203 +80,90 @@ class Sort:
         )
 
 
-@dataclass
-class UserSearch:
-    creator_id: int | None = None
-    tag_id: int | None = None
-    yanked: bool | None = None
-    downloaded: bool | None = None
-    free: bool | None = None
-    q: str | None = None
-    id: Annotated[list[int] | None, Query()] = None
-
-    def apply(self, stmt: Select[T]) -> Select[T]:
-        if self.yanked is not None:
-            stmt = stmt.filter_by(yanked=self.yanked)
-
-        if self.downloaded is not None:
-            stmt = stmt.filter_by(downloaded=self.downloaded)
-
-        if self.free is not None:
-            stmt = stmt.filter_by(free=self.free)
-
-        if self.tag_id is not None:
-            stmt = stmt.where(Asset.tag_ids.any(Tag.id == self.tag_id))
-
-        if self.creator_id is not None:
-            stmt = stmt.where(Asset.creator_id == self.creator_id)
-
-        if self.q is not None:
-            conds = [
-                f.ilike(f"%{self.q}%")
-                for f in (
-                    Asset.slug,
-                    Asset.name,
-                    Asset.description,
-                    Asset.details,
-                )
-            ]
-            stmt = stmt.where(
-                or_(
-                    reduce(lambda a, b: or_(a, b), conds),
-                    Asset.creator.has(User.nickname.ilike(f"%{self.q}%")),
-                )
-            )
-
-        if self.id is not None:
-            stmt = stmt.where(Asset.id.in_(self.id))
-
-        return stmt
-
-
 @router.get("/assets")
 async def asset_list(
     response: Response,
-    pagination: Annotated[Pagination | None, Depends(Pagination.get)],
-    sort: Annotated[Sort, Depends()],
-    search: Annotated[UserSearch, Depends()],
+    db: DbProxyDep,
+    pagination: PaginationDep,
+    sort: Annotated[AssetSort, Depends()],
+    search: Annotated[AssetSearch, Depends()],
 ) -> list[AssetModel]:
-    with Session(engine) as session:
-        stmt = select(Asset)
-        stmt = search.apply(stmt)
+    stmt = Asset.select_all(search, sort)
+    count = db.count(stmt)
+    orms = db.all_or_paginated(stmt, pagination)
 
-        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
-
-        if pagination is not None:
-            stmt = pagination.apply(stmt)
-
-        stmt = sort.apply(Asset, stmt)
-
-        orms = session.execute(stmt).scalars().all()
-
-        response.headers.append("X-Total-Count", str(count))
-        return [AssetModel.model_validate(o, from_attributes=True) for o in orms]
+    response.headers.append("X-Total-Count", str(count))
+    return [AssetModel.model_validate(o, from_attributes=True) for o in orms]
 
 
 @router.get("/assets/{id}")
-async def asset(id: int) -> AssetModel:
-    with Session(engine) as session:
-        asset = session.execute(select(Asset).filter_by(id=id)).scalar_one()
-        return AssetModel.model_validate(asset, from_attributes=True)
+async def asset(id: int, db: DbProxyDep) -> AssetModel:
+    orm = db.one(Asset.select_one(id))
+    return AssetModel.model_validate(orm, from_attributes=True)
 
 
 @router.get("/assets/{id}/download")
-async def asset_download(id: str) -> Response:
-    with Session(engine) as session:
-        asset = session.execute(select(Asset).filter_by(id=id)).scalar_one()
+async def asset_download(id: str, db: DbProxyDep) -> Response:
+    orm = db.one(Asset.select_one(id))
 
-        if not asset.downloaded:
-            raise HTTPException(404)
+    if not orm.downloaded:
+        raise HTTPException(404)
 
-        path = Path(settings.download_dir, asset.slug)
-        filepath = next(path.iterdir())
+    path = Path(settings.download_dir, orm.slug)
+    filepath = next(path.iterdir())
 
-        return FileResponse(filepath, filename=filepath.name)
+    return FileResponse(filepath, filename=filepath.name)
 
 
 @router.get("/downloads")
 async def downloads_list(
     response: Response,
-    _start: int = 0,
-    _end: int = 10,
-    _order: str = "ASC",
-    _sort: str = "id",
-    asset_id: int | None = None,
-    q: str | None = None,
-    id: Annotated[list[int] | None, Query()] = None,
+    db: DbProxyDep,
+    pagination: PaginationDep,
+    sort: Annotated[DownloadSort, Depends()],
+    search: Annotated[DownloadSearch, Depends()],
 ) -> list[DownloadModel]:
-    with Session(engine) as session:
-        sort_field = getattr(Download, _sort)
-        stmt = select(Download)
+    stmt = Download.select_all(search, sort)
+    count = db.count(stmt)
+    orms = db.all_or_paginated(stmt, pagination)
 
-        if asset_id is not None:
-            stmt = stmt.where(Download.asset_id == asset_id)
-
-        if q is not None:
-            pass
-
-        if id is not None:
-            stmt = stmt.where(Download.id.in_(id))
-
-        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
-
-        if id is None:
-            stmt = stmt.offset(_start).limit(_end)
-
-        assets = (
-            session.execute(
-                stmt.order_by(
-                    sort_field.asc()
-                    if _order.casefold() == "asc".casefold()
-                    else sort_field.desc()
-                )
-            )
-            .scalars()
-            .all()
-        )
-        response.headers.append("X-Total-Count", str(count))
-        return [DownloadModel.model_validate(a, from_attributes=True) for a in assets]
+    response.headers.append("X-Total-Count", str(count))
+    return [DownloadModel.model_validate(o, from_attributes=True) for o in orms]
 
 
 @router.get("/downloads/{id}")
-async def get_download(id: str) -> DownloadModel:
-    with Session(engine) as session:
-        orm = session.execute(select(Download).filter_by(id=id)).scalar_one()
-        return DownloadModel.model_validate(orm, from_attributes=True)
+async def get_download(id: str, db: DbProxyDep) -> DownloadModel:
+    orm = db.one(Download.select_one(id))
+    return DownloadModel.model_validate(orm, from_attributes=True)
 
 
 @router.get("/tags")
 async def tag_list(
     response: Response,
-    _start: int = 0,
-    _end: int = 10,
-    _order: str = "ASC",
-    _sort: str = "id",
-    q: str | None = None,
-    id: Annotated[list[int] | None, Query()] = None,
+    db: DbProxyDep,
+    pagination: PaginationDep,
+    sort: Annotated[TagSort, Depends()],
+    search: Annotated[TagSearch, Depends()],
 ) -> list[TagModel]:
-    with Session(engine) as session:
-        sort_field = getattr(Tag, _sort)
-        stmt = select(Tag)
+    stmt = Tag.select_all(search, sort)
+    count = db.count(stmt)
+    orms = db.all_or_paginated(stmt, pagination)
 
-        if q is not None:
-            stmt = stmt.where(Tag.label.ilike("%{q}%"))
-
-        if id is not None:
-            stmt = stmt.where(Tag.id.in_(id))
-
-        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
-
-        if id is None:
-            stmt = stmt.offset(_start).limit(_end)
-
-        tags = (
-            session.execute(
-                stmt.order_by(
-                    sort_field.asc()
-                    if _order.casefold() == "asc".casefold()
-                    else sort_field.desc()
-                )
-            )
-            .scalars()
-            .all()
-        )
-        response.headers.append("X-Total-Count", str(count))
-        return [TagModel.model_validate(t, from_attributes=True) for t in tags]
+    response.headers.append("X-Total-Count", str(count))
+    return [TagModel.model_validate(o, from_attributes=True) for o in orms]
 
 
 @router.get("/tags/{id}")
-async def tag(id: int) -> TagModel:
-    with Session(engine) as session:
-        tag = session.execute(select(Tag).filter_by(id=id)).scalar_one()
-        return TagModel.model_validate(tag, from_attributes=True)
+async def tag(id: int, db: DbProxyDep) -> TagModel:
+    orm = db.one(Tag.select_one(id))
+    return TagModel.model_validate(orm, from_attributes=True)
 
 
 @router.get("/tasks")
 async def task_list(
     response: Response,
-    _start: int = 0,
-    _end: int = 10,
+    db: DbProxyDep,
+    pagination: PaginationDep,
     _order: str = "ASC",
     _sort: str = "id",
     q: str | None = None,
@@ -288,118 +195,66 @@ async def task_run(id: int) -> None:
 @router.get("/users")
 async def users_list(
     response: Response,
-    _start: int = 0,
-    _end: int = 10,
-    _order: str = "ASC",
-    _sort: str = "id",
-    q: str | None = None,
-    id: Annotated[list[int] | None, Query()] = None,
+    db: DbProxyDep,
+    pagination: PaginationDep,
+    sort: Annotated[UserSort, Depends()],
+    search: Annotated[UserSearch, Depends()],
 ) -> list[UserModel]:
-    with Session(engine) as session:
-        sort_field = getattr(User, _sort)
-        stmt = select(User)
+    stmt = User.select_all(search, sort)
+    count = db.count(stmt)
+    orms = db.all_or_paginated(stmt, pagination)
 
-        if q is not None:
-            stmt = stmt.where(User.nickname.ilike(f"%{q}%"))
-
-        if id is not None:
-            stmt = stmt.where(User.id.in_(id))
-
-        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
-
-        if id is None:
-            stmt = stmt.offset(_start).limit(_end)
-
-        orms = (
-            session.execute(
-                stmt.order_by(
-                    sort_field.asc()
-                    if _order.casefold() == "asc".casefold()
-                    else sort_field.desc()
-                )
-            )
-            .scalars()
-            .all()
-        )
-        response.headers.append("X-Total-Count", str(count))
-        return [UserModel.model_validate(a, from_attributes=True) for a in orms]
+    response.headers.append("X-Total-Count", str(count))
+    return [UserModel.model_validate(o, from_attributes=True) for o in orms]
 
 
 @router.get("/users/{id}")
-async def asset(id: int) -> UserModel:
-    with Session(engine) as session:
-        orm = session.execute(select(User).filter_by(id=id)).scalar_one()
-        return UserModel.model_validate(orm, from_attributes=True)
+async def asset(id: int, db: DbProxyDep) -> UserModel:
+    orm = db.one(select(User).filter_by(id=id))
+    return UserModel.model_validate(orm, from_attributes=True)
 
 
 @router.get("/categories")
 async def catagory_list(
     response: Response,
-    _start: int = 0,
-    _end: int = 10,
-    _order: str = "ASC",
-    _sort: str = "id",
-    q: str | None = None,
-    id: Annotated[list[int] | None, Query()] = None,
+    db: DbProxyDep,
+    pagination: PaginationDep,
+    sort: Annotated[CategorySort, Depends()],
+    search: Annotated[CategorySearch, Depends()],
 ) -> list[CategoryModel]:
-    with Session(engine) as session:
-        sort_field = getattr(Category, _sort)
-        stmt = select(Category)
+    stmt = Category.select_all(search, sort)
+    count = db.count(stmt)
+    orms = db.all_or_paginated(stmt, pagination)
 
-        if q is not None:
-            stmt = stmt.where(Category.label.ilike(f"%{q}%"))
-
-        if id is not None:
-            stmt = stmt.where(Category.id.in_(id))
-
-        count = session.execute(select(func.count()).select_from(stmt)).scalar_one()
-
-        if id is None:
-            stmt = stmt.offset(_start).limit(_end)
-
-        orms = (
-            session.execute(
-                stmt.order_by(
-                    sort_field.asc()
-                    if _order.casefold() == "asc".casefold()
-                    else sort_field.desc()
-                )
-            )
-            .scalars()
-            .all()
-        )
-        response.headers.append("X-Total-Count", str(count))
-        return [CategoryModel.model_validate(a, from_attributes=True) for a in orms]
+    response.headers.append("X-Total-Count", str(count))
+    return [CategoryModel.model_validate(o, from_attributes=True) for o in orms]
 
 
 @router.post("/categories", status_code=201)
 async def catagory_create(
-    request: Request, response: Response, body: CategoryCreate
+    request: Request, db: DbProxyDep, response: Response, body: CategoryCreate
 ) -> CategoryModel:
-    with Session(engine) as session:
-        category = Category(label=body.label, parent_id=body.parent_id)
-        session.add(category)
-        session.commit()
+    category = Category(label=body.label, parent_id=body.parent_id)
+    db.add(category)
+    db.commit()
 
-        response.headers.append(
-            "Location", str(request.url_for("get_category", id=category.id))
-        )
+    response.headers.append(
+        "Location", str(request.url_for("get_category", id=category.id))
+    )
 
-        return CategoryModel.model_validate(category, from_attributes=True)
+    return CategoryModel.model_validate(category, from_attributes=True)
 
 
 @router.get("/categories/{id}")
-async def get_category(id: int) -> CategoryModel:
-    with Session(engine) as session:
-        orm = session.execute(select(Category).filter_by(id=id)).scalar_one()
-        return CategoryModel.model_validate(orm, from_attributes=True)
+async def get_category(id: int, db: DbProxyDep) -> CategoryModel:
+    orm = db.one(select(Category).filter_by(id=id))
+    return CategoryModel.model_validate(orm, from_attributes=True)
 
 
 @router.delete("/categories/{id}")
-async def delete_category(id: int) -> CategoryModel:
-    with Session(engine) as session:
-        orm = session.execute(select(Category).filter_by(id=id)).scalar_one()
-        resp = CategoryModel.model_validate(orm, from_attributes=True)
-        session.delete(orm)
-        session.commit()
-        return resp
+async def delete_category(id: int, db: DbProxyDep) -> CategoryModel:
+    orm = db.one(select(Category).filter_by(id=id))
+    resp = CategoryModel.model_validate(orm, from_attributes=True)
+    db.delete(orm)
+    db.commit()
+    return resp

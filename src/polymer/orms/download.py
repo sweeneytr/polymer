@@ -1,13 +1,31 @@
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated, Self, TypeVar
 
-from sqlalchemy import ForeignKey
+from fastapi import HTTPException, Query
+from sqlalchemy import ForeignKey, Select, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ._base import Base
 
 if TYPE_CHECKING:
     from .asset import Asset
+
+
+T = TypeVar("T")
+
+
+@dataclass
+class DownloadSearch:
+    asset_id: int | None = None
+    q: str | None = None
+    id: Annotated[list[int] | None, Query()] = None
+
+
+@dataclass
+class DownloadSort:
+    _order: Annotated[str, Query()] = "ASC"
+    _sort: Annotated[str, Query()] = "id"
 
 
 class Download(Base):
@@ -21,3 +39,41 @@ class Download(Base):
     @property
     def path(self) -> Path:
         return Path(self.asset.slug, self.filename)
+
+    @classmethod
+    def search(cls, stmt: Select[T], search: DownloadSearch) -> Select[T]:
+        if search.asset_id is not None:
+            stmt = stmt.where(Download.asset_id == search.asset_id)
+
+        if search.q is not None:
+            pass
+
+        if search.id is not None:
+            stmt = stmt.where(Download.id.in_(search.id))
+
+        return stmt
+
+    @classmethod
+    def sort(cls, stmt: Select[T], sort: DownloadSort) -> Select[T]:
+        sort_field = getattr(cls, sort._sort, None)
+        if sort_field is None:
+            raise HTTPException(422, f"Unknown sort field {sort._sort}")
+
+        return stmt.order_by(
+            sort_field.asc()
+            if sort._order.casefold() == "asc".casefold()
+            else sort_field.desc()
+        )
+
+    @classmethod
+    def select_one(cls, id: int) -> Select[tuple[Self]]:
+        return select(cls).filter_by(id=id)
+
+    @classmethod
+    def select_all(
+        cls, search: DownloadSearch, sort: DownloadSort
+    ) -> Select[tuple[Self]]:
+        stmt = select(cls)
+        stmt = cls.search(stmt, search)
+        stmt = cls.sort(stmt, sort)
+        return stmt
