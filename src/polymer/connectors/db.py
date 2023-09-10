@@ -1,7 +1,6 @@
-from select import select
 from typing import Any, Iterable, Protocol, TypeVar
 
-from sqlalchemy import Select, func
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 T = TypeVar("T")

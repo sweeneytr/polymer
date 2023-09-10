@@ -37,7 +37,7 @@ router = APIRouter()
 T = TypeVar("T")
 
 
-def db_proxy(session):
+def db_proxy():
     with Session(engine) as session:
         yield DbProxy(session)
 

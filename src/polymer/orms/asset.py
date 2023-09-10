@@ -110,6 +110,7 @@ class Asset(Base):
             stmt = stmt.where(cls.creator_id == search.creator_id)
 
         if search.q is not None:
+            from .user import User
             stmt = stmt.where(
                 or_(
                     *(
