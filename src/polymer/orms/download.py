@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, TypeVar
 
-from fastapi import HTTPException, Query
+from fastapi import Depends, HTTPException, Query
 from sqlalchemy import ForeignKey, Select, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -71,7 +71,9 @@ class Download(Base):
 
     @classmethod
     def select_all(
-        cls, search: DownloadSearch, sort: DownloadSort
+        cls,
+        search: Annotated[DownloadSearch, Depends()],
+        sort: Annotated[DownloadSort, Depends()],
     ) -> Select[tuple[Self]]:
         stmt = select(cls)
         stmt = cls.search(stmt, search)

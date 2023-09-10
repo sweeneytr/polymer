@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated, Optional, Self, TypeVar
 
-from fastapi import HTTPException, Query
+from fastapi import Depends, HTTPException, Query
 from sqlalchemy import ForeignKey, Select, select
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -65,7 +65,9 @@ class Category(Base):
 
     @classmethod
     def select_all(
-        cls, search: CategorySearch, sort: CategorySort
+        cls,
+        search: Annotated[CategorySearch, Depends()],
+        sort: Annotated[CategorySort, Depends()],
     ) -> Select[tuple[Self]]:
         stmt = select(cls)
         stmt = cls.search(stmt, search)

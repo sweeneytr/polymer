@@ -1,9 +1,16 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Optional, Self, TypeVar
 
-from fastapi import HTTPException, Query
-from sqlalchemy import (Boolean, ColumnElement, ForeignKey, Select, or_,
-                        select, type_coerce)
+from fastapi import Depends, HTTPException, Query
+from sqlalchemy import (
+    Boolean,
+    ColumnElement,
+    ForeignKey,
+    Select,
+    or_,
+    select,
+    type_coerce,
+)
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -39,6 +46,9 @@ class AssetSort:
 
 class Asset(Base):
     __tablename__ = "asset"
+    Sort = AssetSort
+    Search = AssetSearch
+
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     creator_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
@@ -145,7 +155,11 @@ class Asset(Base):
         return select(cls).filter_by(id=id)
 
     @classmethod
-    def select_all(cls, search: AssetSearch, sort: AssetSort) -> Select[tuple[Self]]:
+    def select_all(
+        cls,
+        search: Annotated[AssetSearch, Depends()],
+        sort: Annotated[AssetSort, Depends()],
+    ) -> Select[tuple[Self]]:
         stmt = select(cls)
         stmt = cls.search(stmt, search)
         stmt = cls.sort(stmt, sort)

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Self, TypeVar
 
-from fastapi import HTTPException, Query
+from fastapi import Depends, HTTPException, Query
 from sqlalchemy import Select, select
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -64,7 +64,11 @@ class User(Base):
         return select(cls).filter_by(id=id)
 
     @classmethod
-    def select_all(cls, search: UserSearch, sort: UserSort) -> Select[tuple[Self]]:
+    def select_all(
+        cls,
+        search: Annotated[UserSearch, Depends()],
+        sort: Annotated[UserSort, Depends()],
+    ) -> Select[tuple[Self]]:
         stmt = select(cls)
         stmt = cls.search(stmt, search)
         stmt = cls.sort(stmt, sort)
