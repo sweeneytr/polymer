@@ -2,7 +2,7 @@ import datetime
 from dataclasses import dataclass
 from logging import getLogger
 from pathlib import Path
-from typing import Annotated, Any, Iterable, Self, Type, TypeVar
+from typing import Annotated, Any, Generic, Iterable, Self, Type, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
@@ -14,8 +14,15 @@ from polymer.connectors.db import DbProxy
 
 from .config import settings
 from .lifespan import manager
-from .models import (AssetModel, CategoryCreate, CategoryModel, DownloadModel,
-                     TagModel, TaskModel, UserModel)
+from .models import (
+    AssetModel,
+    CategoryCreate,
+    CategoryModel,
+    DownloadModel,
+    TagModel,
+    TaskModel,
+    UserModel,
+)
 from .orms import Asset, Category, Download, Tag, User, engine
 
 logger = getLogger(__name__)
@@ -23,6 +30,7 @@ logger = getLogger(__name__)
 router = APIRouter()
 
 T = TypeVar("T")
+O = TypeVar("O")
 M = TypeVar("M", bound=BaseModel)
 
 
@@ -77,7 +85,7 @@ class Pager:
         self.db = db
         self.pagination = pagination
 
-    def __call__(self, Model: Type[M], stmt: Iterable[Any]) -> Iterable[M]:
+    def list(self, Model: Type[M], stmt: Iterable[Any]) -> Iterable[M]:
         count = self.db.count(stmt)
         orms = self.db.all_or_paginated(stmt, self.pagination)
 
@@ -85,18 +93,29 @@ class Pager:
         return [Model.model_validate(o, from_attributes=True) for o in orms]
 
 
+class One(Generic[M]):
+    def __init__(self, db: DbProxyDep) -> None:
+        self.db = db
+
+    def one(self, Model: Type[M], stmt: Iterable[Any]) -> Iterable[M]:
+        orm = self.db.one(stmt)
+        return Model.model_validate(orm, from_attributes=True)
+
+
 @router.get("/assets")
 async def asset_list(
     pager: Annotated[Pager, Depends()],
     stmt: Annotated[Select[tuple[Asset]], Depends(Asset.select_all)],
 ) -> list[AssetModel]:
-    return pager(AssetModel, stmt)
+    return pager.list(AssetModel, stmt)
 
 
 @router.get("/assets/{id}")
-async def asset(id: int, db: DbProxyDep) -> AssetModel:
-    orm = db.one(Asset.select_one(id))
-    return AssetModel.model_validate(orm, from_attributes=True)
+async def asset(
+    one: Annotated[One, Depends()],
+    stmt: Annotated[Select[tuple[Asset]], Depends(Asset.select_one)],
+) -> AssetModel:
+    return one.one(stmt)
 
 
 @router.get("/assets/{id}/download")
@@ -117,7 +136,7 @@ async def downloads_list(
     pager: Annotated[Pager, Depends()],
     stmt: Annotated[Select[tuple[Download]], Depends(Download.select_all)],
 ) -> list[DownloadModel]:
-    return pager(DownloadModel, stmt)
+    return pager.list(DownloadModel, stmt)
 
 
 @router.get("/downloads/{id}")
@@ -131,7 +150,7 @@ async def tag_list(
     pager: Annotated[Pager, Depends()],
     stmt: Annotated[Select[tuple[Tag]], Depends(Tag.select_all)],
 ) -> list[TagModel]:
-    return pager(TagModel, stmt)
+    return pager.list(TagModel, stmt)
 
 
 @router.get("/tags/{id}")
@@ -178,7 +197,7 @@ async def users_list(
     pager: Annotated[Pager, Depends()],
     stmt: Annotated[Select[tuple[User]], Depends(User.select_all)],
 ) -> list[UserModel]:
-    return pager(UserModel, stmt)
+    return pager.list(UserModel, stmt)
 
 
 @router.get("/users/{id}")
@@ -192,7 +211,7 @@ async def catagory_list(
     pager: Annotated[Pager, Depends()],
     stmt: Annotated[Select[tuple[Category]], Depends(Category.select_all)],
 ) -> list[CategoryModel]:
-    return pager(CategoryModel, stmt)
+    return pager.list(CategoryModel, stmt)
 
 
 @router.post("/categories", status_code=201)
