@@ -60,27 +60,11 @@ DbProxyDep = Annotated[DbProxy, Depends(db_proxy)]
 PaginationDep = Annotated[Pagination | None, Depends(Pagination.get)]
 
 
-@dataclass
-class Sort:
-    _order: Annotated[str, Query()] = "ASC"
-    _sort: Annotated[str, Query()] = "id"
-
-    def apply(self, cls: Any, stmt: Select[T]) -> Select[T]:
-        sort_field = getattr(cls, self._sort, None)
-        if sort_field is None:
-            raise HTTPException(422, f"Unknown sort field {self._sort}")
-
-        return stmt.order_by(
-            sort_field.asc()
-            if self._order.casefold() == "asc".casefold()
-            else sort_field.desc()
-        )
-
-
-class Pager:
+class Controller(Generic[M]):
     def __init__(
-        self, response: Response, db: DbProxyDep, pagination: PaginationDep
+        self, request: Request, response: Response, db: DbProxyDep, pagination: PaginationDep
     ) -> None:
+        self.request = request
         self.response = response
         self.db = db
         self.pagination = pagination
@@ -92,35 +76,65 @@ class Pager:
         self.response.headers.append("X-Total-Count", str(count))
         return [Model.model_validate(o, from_attributes=True) for o in orms]
 
+    def create(self, Model: Type[M], endpoint: str, orm: Any) -> M:
+        # orm = Category(label=body.label, parent_id=body.parent_id)
+        self.db.add(orm)
+        self.db.commit()
 
-class One(Generic[M]):
-    def __init__(self, db: DbProxyDep) -> None:
-        self.db = db
+        self.response.headers.append(
+            "Location", str(self.request.url_for(endpoint, id=orm.id))
+        )
 
-    def one(self, Model: Type[M], stmt: Iterable[Any]) -> Iterable[M]:
+        return Model.model_validate(orm, from_attributes=True)
+
+    def one(self, Model: Type[M], stmt: Iterable[Any]) -> M:
         orm = self.db.one(stmt)
         return Model.model_validate(orm, from_attributes=True)
+
+    def delete(self, Model: Type[M], stmt: Iterable[Any]) -> M:
+        orm = self.db.one(stmt)
+        resp = Model.model_validate(orm, from_attributes=True)
+        self.db.delete(orm)
+        self.db.commit()
+        return resp
+
+
+ControllerDep = Annotated[Controller, Depends()]
+AllAssetsDep = Annotated[Select[tuple[Asset]], Depends(Asset.select_all)]
+OneAssetDep = Annotated[Select[tuple[Asset]], Depends(Asset.select_one)]
+
+AllDownloadsDep = Annotated[Select[tuple[Download]], Depends(Download.select_all)]
+OneDownloadDep = Annotated[Select[tuple[Download]], Depends(Download.select_one)]
+
+AllTagsDep = Annotated[Select[tuple[Tag]], Depends(Tag.select_all)]
+OneTagDep = Annotated[Select[tuple[Tag]], Depends(Tag.select_one)]
+
+AllUsersDep = Annotated[Select[tuple[User]], Depends(User.select_all)]
+OneUserDep = Annotated[Select[tuple[User]], Depends(User.select_one)]
+
+AllCatagoriesDep = Annotated[Select[tuple[Category]], Depends(Category.select_all)]
+OneCatagoryDep = Annotated[Select[tuple[Category]], Depends(Category.select_one)]
 
 
 @router.get("/assets")
 async def asset_list(
-    pager: Annotated[Pager, Depends()],
-    stmt: Annotated[Select[tuple[Asset]], Depends(Asset.select_all)],
+    controller: ControllerDep, stmt: AllAssetsDep
 ) -> list[AssetModel]:
-    return pager.list(AssetModel, stmt)
+    return controller.list(AssetModel, stmt)
 
 
 @router.get("/assets/{id}")
 async def asset(
-    one: Annotated[One, Depends()],
-    stmt: Annotated[Select[tuple[Asset]], Depends(Asset.select_one)],
+    controller: ControllerDep, stmt: OneAssetDep
 ) -> AssetModel:
-    return one.one(stmt)
+    return controller.one(AssetModel, stmt)
 
 
 @router.get("/assets/{id}/download")
-async def asset_download(id: str, db: DbProxyDep) -> Response:
-    orm = db.one(Asset.select_one(id))
+async def asset_download(
+    db: DbProxyDep, stmt: OneAssetDep
+) -> Response:
+    orm = db.one(stmt)
 
     if not orm.downloaded:
         raise HTTPException(404)
@@ -133,30 +147,30 @@ async def asset_download(id: str, db: DbProxyDep) -> Response:
 
 @router.get("/downloads")
 async def downloads_list(
-    pager: Annotated[Pager, Depends()],
-    stmt: Annotated[Select[tuple[Download]], Depends(Download.select_all)],
+    controller: ControllerDep, stmt: AllDownloadsDep
 ) -> list[DownloadModel]:
-    return pager.list(DownloadModel, stmt)
+    return controller.list(DownloadModel, stmt)
 
 
 @router.get("/downloads/{id}")
-async def get_download(id: str, db: DbProxyDep) -> DownloadModel:
-    orm = db.one(Download.select_one(id))
-    return DownloadModel.model_validate(orm, from_attributes=True)
+async def get_download(
+    controller: ControllerDep, stmt: OneDownloadDep
+) -> DownloadModel:
+    return controller.one(DownloadModel, stmt)
 
 
 @router.get("/tags")
 async def tag_list(
-    pager: Annotated[Pager, Depends()],
-    stmt: Annotated[Select[tuple[Tag]], Depends(Tag.select_all)],
+    controller: ControllerDep, stmt: AllTagsDep
 ) -> list[TagModel]:
-    return pager.list(TagModel, stmt)
+    return controller.list(TagModel, stmt)
 
 
 @router.get("/tags/{id}")
-async def tag(id: int, db: DbProxyDep) -> TagModel:
-    orm = db.one(Tag.select_one(id))
-    return TagModel.model_validate(orm, from_attributes=True)
+async def tag(
+    controller: ControllerDep, stmt: OneTagDep
+) -> TagModel:
+    return controller.one(TagModel, stmt)
 
 
 @router.get("/tasks")
@@ -194,51 +208,42 @@ async def task_run(id: int) -> None:
 
 @router.get("/users")
 async def users_list(
-    pager: Annotated[Pager, Depends()],
-    stmt: Annotated[Select[tuple[User]], Depends(User.select_all)],
+    controller: ControllerDep, stmt: AllUsersDep
 ) -> list[UserModel]:
-    return pager.list(UserModel, stmt)
+    return controller.list(UserModel, stmt)
 
 
 @router.get("/users/{id}")
-async def asset(id: int, db: DbProxyDep) -> UserModel:
-    orm = db.one(User.select_one(id))
-    return UserModel.model_validate(orm, from_attributes=True)
+async def asset(
+    controller: ControllerDep, stmt: OneUserDep
+) -> UserModel:
+    return controller.one(UserModel, stmt)
 
 
 @router.get("/categories")
 async def catagory_list(
-    pager: Annotated[Pager, Depends()],
-    stmt: Annotated[Select[tuple[Category]], Depends(Category.select_all)],
+    controller: ControllerDep, stmt: AllCatagoriesDep
 ) -> list[CategoryModel]:
-    return pager.list(CategoryModel, stmt)
+    return controller.list(CategoryModel, stmt)
 
 
 @router.post("/categories", status_code=201)
 async def catagory_create(
-    request: Request, db: DbProxyDep, response: Response, body: CategoryCreate
+    controller: ControllerDep, body: CategoryCreate
 ) -> CategoryModel:
-    category = Category(label=body.label, parent_id=body.parent_id)
-    db.add(category)
-    db.commit()
-
-    response.headers.append(
-        "Location", str(request.url_for("get_category", id=category.id))
-    )
-
-    return CategoryModel.model_validate(category, from_attributes=True)
+    orm = Category(label=body.label, parent_id=body.parent_id)
+    return controller.create(CategoryModel, "get_category", orm)
 
 
 @router.get("/categories/{id}")
-async def get_category(id: int, db: DbProxyDep) -> CategoryModel:
-    orm = db.one(Category.select_one(id))
-    return CategoryModel.model_validate(orm, from_attributes=True)
+async def get_category(
+        controller: ControllerDep, stmt: OneCatagoryDep
+) -> CategoryModel:
+    return controller.one(CategoryModel, stmt)
 
 
 @router.delete("/categories/{id}")
-async def delete_category(id: int, db: DbProxyDep) -> CategoryModel:
-    orm = db.one(Category.select_one(id))
-    resp = CategoryModel.model_validate(orm, from_attributes=True)
-    db.delete(orm)
-    db.commit()
-    return resp
+async def delete_category(
+        controller: ControllerDep, stmt: OneCatagoryDep
+) -> CategoryModel:
+    return controller.delete(CategoryModel, stmt)
