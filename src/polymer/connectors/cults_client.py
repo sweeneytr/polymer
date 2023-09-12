@@ -137,6 +137,7 @@ class CultsGraphQLClient:
                     "operationName": operation,
                     "variables": variables,
                 },
+                timeout=20.0,
             )
         except httpx.ReadTimeout as e:
             raise RuntimeError(f"GraphQL timed out, {operation=} {variables=}") from e
