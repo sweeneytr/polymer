@@ -1,4 +1,4 @@
-from ._base import engine
+from ._base import engine, Base
 from .asset import Asset
 from .category import Category
 from .download import Download
