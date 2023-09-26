@@ -62,7 +62,11 @@ PaginationDep = Annotated[Pagination | None, Depends(Pagination.get)]
 
 class Controller(Generic[M]):
     def __init__(
-        self, request: Request, response: Response, db: DbProxyDep, pagination: PaginationDep
+        self,
+        request: Request,
+        response: Response,
+        db: DbProxyDep,
+        pagination: PaginationDep,
     ) -> None:
         self.request = request
         self.response = response
@@ -117,23 +121,17 @@ OneCatagoryDep = Annotated[Select[tuple[Category]], Depends(Category.select_one)
 
 
 @router.get("/assets")
-async def asset_list(
-    controller: ControllerDep, stmt: AllAssetsDep
-) -> list[AssetModel]:
+async def asset_list(controller: ControllerDep, stmt: AllAssetsDep) -> list[AssetModel]:
     return controller.list(AssetModel, stmt)
 
 
 @router.get("/assets/{id}")
-async def asset(
-    controller: ControllerDep, stmt: OneAssetDep
-) -> AssetModel:
+async def asset(controller: ControllerDep, stmt: OneAssetDep) -> AssetModel:
     return controller.one(AssetModel, stmt)
 
 
 @router.get("/assets/{id}/download")
-async def asset_download(
-    db: DbProxyDep, stmt: OneAssetDep
-) -> Response:
+async def asset_download(db: DbProxyDep, stmt: OneAssetDep) -> Response:
     orm = db.one(stmt)
 
     if not orm.downloaded:
@@ -160,16 +158,12 @@ async def get_download(
 
 
 @router.get("/tags")
-async def tag_list(
-    controller: ControllerDep, stmt: AllTagsDep
-) -> list[TagModel]:
+async def tag_list(controller: ControllerDep, stmt: AllTagsDep) -> list[TagModel]:
     return controller.list(TagModel, stmt)
 
 
 @router.get("/tags/{id}")
-async def tag(
-    controller: ControllerDep, stmt: OneTagDep
-) -> TagModel:
+async def tag(controller: ControllerDep, stmt: OneTagDep) -> TagModel:
     return controller.one(TagModel, stmt)
 
 
@@ -207,16 +201,12 @@ async def task_run(id: int) -> None:
 
 
 @router.get("/users")
-async def users_list(
-    controller: ControllerDep, stmt: AllUsersDep
-) -> list[UserModel]:
+async def users_list(controller: ControllerDep, stmt: AllUsersDep) -> list[UserModel]:
     return controller.list(UserModel, stmt)
 
 
 @router.get("/users/{id}")
-async def asset(
-    controller: ControllerDep, stmt: OneUserDep
-) -> UserModel:
+async def asset(controller: ControllerDep, stmt: OneUserDep) -> UserModel:
     return controller.one(UserModel, stmt)
 
 
@@ -237,13 +227,13 @@ async def catagory_create(
 
 @router.get("/categories/{id}")
 async def get_category(
-        controller: ControllerDep, stmt: OneCatagoryDep
+    controller: ControllerDep, stmt: OneCatagoryDep
 ) -> CategoryModel:
     return controller.one(CategoryModel, stmt)
 
 
 @router.delete("/categories/{id}")
 async def delete_category(
-        controller: ControllerDep, stmt: OneCatagoryDep
+    controller: ControllerDep, stmt: OneCatagoryDep
 ) -> CategoryModel:
     return controller.delete(CategoryModel, stmt)
