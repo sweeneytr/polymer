@@ -17,6 +17,8 @@ from .components.ingester import Ingester
 from .components.scraper import Scraper
 from .connectors.cults_client import CultsClient, CultsGraphQLClient
 from .orms import engine
+from alembic import command
+from alembic.config import Config
 
 logger = getLogger(__name__)
 
@@ -70,6 +72,9 @@ minutely = "* * * * *"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
+    config = Config('./alembic.ini')
+    command.upgrade(config, "head")
+    
     queue = Queue()
 
     with Session(engine) as ingester_session, Session(engine) as actor_session:

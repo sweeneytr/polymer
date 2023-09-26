@@ -9,6 +9,8 @@ handlers:
 loggers:
     uvicorn:
         level: INFO
+    alembic:
+        level: INFO
     polymer:
         level: INFO
 
