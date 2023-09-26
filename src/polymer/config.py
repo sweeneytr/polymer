@@ -1,7 +1,10 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=('.env', '.env.local'))
+
+    db_url: str
     email: str
     password: str
     nickname: str
@@ -9,10 +12,4 @@ class Settings(BaseSettings):
     download_dir: str
 
 
-settings = Settings(
-    email="sweeneytri@gmail.com",
-    password="qj*T44viB1exY5ET",
-    nickname="calcifer242",
-    apikey="z2TNkBjluSamUQtdO7R19hkPo",
-    download_dir="./tmp",
-)
+settings = Settings()

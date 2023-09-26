@@ -1,6 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Table, create_engine
 from sqlalchemy.orm import DeclarativeBase
-
+from ..config import settings
 
 class Base(DeclarativeBase):
     pass
@@ -14,5 +14,5 @@ tag_association_table = Table(
 )
 
 
-engine = create_engine("sqlite:///polymer.db")
+engine = create_engine(settings.db_url)
 Base.metadata.create_all(engine)

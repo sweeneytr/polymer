@@ -17,6 +17,7 @@ pydantic = "^2.3.0"
 aiocron = "^1.8"
 aiometer = "^0.4.0"
 pyrfc6266 = "^1.0.2"
+psycopg2 = "^2.9.7"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -24,6 +25,7 @@ black = "^23.7.0"
 isort = "^5.12.0"
 mypy = "^1.5.1"
 types-beautifulsoup4 = "^4.12.0.6"
+alembic = "^1.12.0"
 
 [build-system]
 requires = ["poetry-core"]
