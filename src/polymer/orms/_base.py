@@ -15,4 +15,3 @@ tag_association_table = Table(
 
 
 engine = create_engine(settings.db_url)
-Base.metadata.create_all(engine)
