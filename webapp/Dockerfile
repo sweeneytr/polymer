@@ -13,6 +13,11 @@ RUN pnpm run build
 
 
 FROM node:20-alpine as production-stage
+
+LABEL org.opencontainers.image.source=https://github.com/sweeneytr/polymer
+LABEL org.opencontainers.image.description="Polymer Web Server"
+LABEL org.opencontainers.image.licenses=MIT
+
 RUN npm install -g pnpm
 
 WORKDIR /app

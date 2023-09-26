@@ -1,5 +1,9 @@
 FROM python:3.11-alpine
 
+LABEL org.opencontainers.image.source=https://github.com/sweeneytr/polymer
+LABEL org.opencontainers.image.description="Polymer DB Server"
+LABEL org.opencontainers.image.licenses=MIT
+
 ARG APP_PATH=/opt/${APP_NAME}
 
 ENV \
