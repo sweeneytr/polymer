@@ -32,4 +32,4 @@ async def model_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-app.include_router(router)
+app.include_router(router, prefix="/api")

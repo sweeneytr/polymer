@@ -22,6 +22,7 @@ import {
   SimpleForm,
   TextInput,
   ReferenceInput,
+  DataProvider,
 } from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
 import {
@@ -35,10 +36,8 @@ import PlayCircleFilledIcon from "@mui/icons-material/PlayCircleFilled";
 import get from "lodash/get";
 import axios from "axios";
 import DownloadForOfflineIcon from "@mui/icons-material/DownloadForOffline";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { QueryClient } from "react-query";
-
-const dataProvider = jsonServerProvider("http://localhost:8000");
 
 const assetFilters = [
   <SearchInput source="q" alwaysOn />,
@@ -324,6 +323,8 @@ const UrlButton = ({
 };
 
 const AdminApp = () => {
+  const [dataProvider, setDataProvider] = useState<DataProvider | undefined>(undefined);
+  
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -331,6 +332,10 @@ const AdminApp = () => {
       },
     },
   });
+  
+  useEffect(() => {
+    setDataProvider(jsonServerProvider(`${window.location.origin}/api`))
+  }, []);
 
   return (
     <Admin dataProvider={dataProvider} queryClient={queryClient}>
