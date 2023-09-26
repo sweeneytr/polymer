@@ -3,7 +3,6 @@ version: 1
 handlers:
     console:
         class: logging.StreamHandler
-        level: DEBUG
         stream: ext://sys.stdout
 
 loggers:

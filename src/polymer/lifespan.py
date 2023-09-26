@@ -1,3 +1,4 @@
+import asyncio
 import time
 from asyncio import Queue, Task, create_task
 from collections.abc import Callable
@@ -73,7 +74,13 @@ minutely = "* * * * *"
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
     config = Config("./alembic.ini")
-    command.upgrade(config, "head")
+    command.upgrade(config, "head", tag="skip_log_config")
+
+    def handler(loop, context):
+        logger.error(f"Exception in task {context['future']}", exc_info=context['exception'])
+        loop.default_exception_handler(context)
+
+    asyncio.get_event_loop().set_exception_handler(handler)
 
     queue = Queue()
 
