@@ -25,6 +25,7 @@ WORKDIR /app
 
 COPY --from=build-stage /app/.next ./.next
 COPY --from=build-stage /app/node_modules ./node_modules
+COPY --from=build-stage /app/public ./public
 COPY --from=build-stage /app/package.json ./
 COPY --from=build-stage /app/pnpm-lock.yaml ./
 COPY --from=build-stage /app/next.config.js ./
