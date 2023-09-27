@@ -31,7 +31,7 @@ RUN apk --no-cache add git build-base gcc rust cargo musl-dev postgresql-dev lib
   && pip install ./polymer*.whl --requirement requirements.txt \
   && apk del git build-base gcc rust cargo musl-dev postgresql-dev libffi-dev
 
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup -S app --gid 8675 && adduser -S app --uid 3090 -G app
 RUN chown -R app:app /opt/polymer
 USER app
 
