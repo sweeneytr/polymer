@@ -8,6 +8,7 @@ COPY package*.json ./
 COPY pnpm-lock.yaml ./
 RUN pnpm install
 COPY tsconfig.json next.config.js ./
+COPY public/ public/
 COPY src/ src/
 RUN pnpm run build
 
