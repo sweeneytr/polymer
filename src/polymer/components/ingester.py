@@ -62,27 +62,30 @@ class Ingester:
         while True:
             data = await self.queue.get()
 
-            match data:
-                case AssetFromCults():
-                    asset = self.get_asset(data.slug)
-                    if asset is None:
-                        asset = self.asset_from_cults(data)
-                        self.session.add(asset)
+            try:
+                match data:
+                    case AssetFromCults():
+                        asset = self.get_asset(data.slug)
+                        if asset is None:
+                            asset = self.asset_from_cults(data)
+                            self.session.add(asset)
 
-                    logger.debug(f"Processed asset {asset.slug} from cults")
+                        logger.debug(f"Processed asset {asset.slug} from cults")
 
-                case OrderFromCults():
-                    asset = self.get_asset(data.creation.slug)
+                    case OrderFromCults():
+                        asset = self.get_asset(data.creation.slug)
 
-                    if asset is None:
-                        asset = self.asset_from_cults(data.creation)
-                        asset.yanked = True
-                        self.session.add(asset)
+                        if asset is None:
+                            asset = self.asset_from_cults(data.creation)
+                            asset.yanked = True
+                            self.session.add(asset)
 
-                    asset.download_url = data.download_url
+                        asset.download_url = data.download_url
 
-                    logger.debug(f"Processed order for {asset.slug} from cults")
+                        logger.debug(f"Processed order for {asset.slug} from cults")
 
-            self.session.commit()
+                self.session.commit()
 
-            self.queue.task_done()
+                self.queue.task_done()
+            except Exception:
+                logger.exception("Exception while ingesting data")
