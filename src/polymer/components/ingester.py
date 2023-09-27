@@ -68,6 +68,7 @@ class Ingester:
                         asset = self.get_asset(data.slug)
                         if asset is None:
                             asset = self.asset_from_cults(data)
+                            asset.yanked = False
                             self.session.add(asset)
 
                         logger.debug(f"Processed asset {asset.slug} from cults")
