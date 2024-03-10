@@ -334,7 +334,7 @@ const AdminApp = () => {
   });
   
   useEffect(() => {
-    setDataProvider(jsonServerProvider(`${window.location.origin}/api`))
+    setDataProvider(jsonServerProvider(`http://127.0.0.1:8000/api`))
   }, []);
 
   return (

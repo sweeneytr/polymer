@@ -1,0 +1,10 @@
+version: '3'
+
+env:
+  APIKEY: jHHBn91B8mUJw0hhSRsSwS8Si
+  PASSWORD: As!H1NklKE5O@Ihx
+
+tasks:
+  run:
+    cmds:
+      - poetry run uvicorn polymer.app:app --log-config=logging.yaml 

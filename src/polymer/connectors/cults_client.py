@@ -151,6 +151,9 @@ class CultsGraphQLClient:
         for offset in count(step=limit):
             data = await self.graphql("ListOrders", offset=offset, limit=limit)
 
+            if 'errors' in data:
+                raise RuntimeError("Error while listing orders: "+ ", ".join(e['message'] for e in data['errors']))
+
             orders = data["data"]["me"]["orders"]
             _result.extend(orders)
 
@@ -168,8 +171,10 @@ class CultsGraphQLClient:
 
         for offset in count(step=limit):
             data = await self.graphql("LikedCreations", offset=offset, limit=limit)
-
-            liked = data["data"]["me"]["likedCreations"]
+            if 'errors' in data:
+                raise RuntimeError("Error while getting liked: "+ ", ".join(e['message'] for e in data['errors']))
+            
+            liked = data["data"]["me"]["likedCcreations"]
             _result.extend(liked)
 
             if len(liked) < limit:
