@@ -7,4 +7,13 @@ env:
 tasks:
   run:
     cmds:
-      - poetry run uvicorn polymer.app:app --log-config=logging.yaml 
+      - poetry run uvicorn polymer.app:app --log-config=logging.yaml
+
+  generate:
+    cmds:
+      - poetry run alembic revision --autogenerate {{.CLI_ARGS}}
+
+  format:
+    cmds:
+      - poetry run black src
+      - poetry run isort src

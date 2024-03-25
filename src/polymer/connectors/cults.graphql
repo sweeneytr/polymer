@@ -13,9 +13,11 @@ query ListOrders($offset: Int, $limit: Int) {
 }
 
 query LikedCreations($offset: Int, $limit: Int) {
-    me {
-        likedCreations(offset: $offset, limit: $limit) {
-            ...creationFields
+    myself {
+        user {
+            likedCreations(offset: $offset, limit: $limit) {
+                ...creationFields
+            }
         }
     }
 }

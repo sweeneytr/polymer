@@ -1,9 +1,10 @@
+import datetime
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, TypeVar
 
 from fastapi import Depends, HTTPException, Query
-from sqlalchemy import ForeignKey, Select, select
+from sqlalchemy import ForeignKey, Select, func, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ._base import Base
@@ -33,6 +34,7 @@ class Download(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     asset_id: Mapped[str] = mapped_column(ForeignKey("asset.id"))
     filename: Mapped[str]
+    downloadedAt: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
 
     asset: Mapped["Asset"] = relationship(back_populates="downloads")
 

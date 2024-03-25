@@ -77,7 +77,9 @@ async def lifespan(app: FastAPI) -> None:
     command.upgrade(config, "head", tag="skip_log_config")
 
     def handler(loop, context):
-        logger.error(f"Exception in task {context['future']}", exc_info=context['exception'])
+        logger.error(
+            f"Exception in task {context['future']}", exc_info=context["exception"]
+        )
         loop.default_exception_handler(context)
 
     asyncio.get_event_loop().set_exception_handler(handler)

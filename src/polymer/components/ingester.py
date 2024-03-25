@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..connectors.cults_models import AssetFromCults, OrderFromCults
-from ..orms import Asset, Tag, User, Illustration
+from ..orms import Asset, Illustration, Tag, User
 
 logger = getLogger(__name__)
 
