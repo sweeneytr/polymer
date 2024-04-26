@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     nickname: str
     apikey: str
     download_dir: str
+    mmf_client_id: str
+    mmf_client_secret: str
 
 
 settings = Settings()

@@ -53,6 +53,7 @@ class DownloadModel(BaseModel):
     id: int
     asset_id: int
     filename: str
+    downloaded_at: datetime.datetime
 
 
 class TagModel(BaseModel):
@@ -94,3 +95,10 @@ class CategoryModel(BaseModel):
     parent_id: int | None
     child_ids: list[int]
     label: str
+
+class MmfModel(BaseModel):
+    user_id: int
+    access_token: str
+    access_exp: datetime.datetime
+    refresh_token: str
+    refresh_exp: datetime.datetime

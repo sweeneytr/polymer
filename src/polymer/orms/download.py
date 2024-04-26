@@ -34,7 +34,7 @@ class Download(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     asset_id: Mapped[str] = mapped_column(ForeignKey("asset.id"))
     filename: Mapped[str]
-    downloadedAt: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
+    downloaded_at: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
 
     asset: Mapped["Asset"] = relationship(back_populates="downloads")
 

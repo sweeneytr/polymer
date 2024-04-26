@@ -5,3 +5,4 @@ from .download import Download
 from .illustration import Illustration
 from .tag import Tag
 from .user import User
+from .mmf import Mmf

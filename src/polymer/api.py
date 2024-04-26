@@ -3,22 +3,26 @@ from dataclasses import dataclass
 from logging import getLogger
 from pathlib import Path
 from typing import Annotated, Any, Generic, Iterable, Self, Type, TypeVar
+from uuid import uuid4
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import Select
 from sqlalchemy.orm import Session
 
 from polymer.connectors.db import DbProxy
+from polymer.orms.mmf import Mmf
 
-from .config import settings
+from .config import Settings, settings
 from .lifespan import manager
 from .models import (
     AssetModel,
     CategoryCreate,
     CategoryModel,
     DownloadModel,
+    MmfModel,
     TagModel,
     TaskModel,
     UserModel,
@@ -104,6 +108,8 @@ class Controller(Generic[M]):
 
 
 ControllerDep = Annotated[Controller, Depends()]
+MmfController = Annotated[Controller[Mmf], Depends()]
+
 AllAssetsDep = Annotated[Select[tuple[Asset]], Depends(Asset.select_all)]
 OneAssetDep = Annotated[Select[tuple[Asset]], Depends(Asset.select_one)]
 
@@ -119,6 +125,7 @@ OneUserDep = Annotated[Select[tuple[User]], Depends(User.select_one)]
 AllCatagoriesDep = Annotated[Select[tuple[Category]], Depends(Category.select_all)]
 OneCatagoryDep = Annotated[Select[tuple[Category]], Depends(Category.select_one)]
 
+OneMmfDep = Annotated[Select[tuple[Mmf]], Depends(Mmf.select_one)]
 
 @router.get("/assets")
 async def asset_list(controller: ControllerDep, stmt: AllAssetsDep) -> list[AssetModel]:
@@ -237,3 +244,69 @@ async def delete_category(
     controller: ControllerDep, stmt: OneCatagoryDep
 ) -> CategoryModel:
     return controller.delete(CategoryModel, stmt)
+
+
+@router.get("/mmf/login")
+async def mmf_login(request: Request) -> RedirectResponse:
+    state = str(uuid4())
+    redirect_uri = request.base_url.replace(path="/api/mmf/callback")
+    url = (
+        "https://auth.myminifactory.com/web/authorize"
+        f"?client_id={settings.mmf_client_id}"
+        f"&redirect_uri={str(redirect_uri)}"
+        f"&response_type=code"
+        f"&state={state}"
+    )
+    return RedirectResponse(url)
+
+
+@router.get("/mmf/callback")
+async def mmf_callback(request: Request, code: str, state: str, controller: ControllerDep) -> MmfModel:
+    url = "https://auth.myminifactory.com/v1/oauth/tokens"
+    redirect_uri = request.base_url.replace(path="/api/mmf/callback")
+    res = httpx.post(
+        url,
+        auth=(settings.mmf_client_id, settings.mmf_client_secret),
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": str(redirect_uri),
+        },
+    )
+    data1 = res.json()
+    print(data1)
+
+    url2 = "https://auth.myminifactory.com/v1/oauth/introspect"
+    res2 = httpx.post(
+        url2,
+        auth=(settings.mmf_client_id, settings.mmf_client_secret),
+        data={
+            "token": data1['refresh_token'],
+            "token_type_hint": 'refresh_token',
+        },
+    )
+    data2 = res2.json()
+
+    return controller.create(MmfModel, "", Mmf(
+        user_id=data1['user_id'],
+        access_token=data1['access_token'],
+        refresh_token=data1['refresh_token'],
+        access_exp=datetime.datetime.now() + datetime.timedelta(milliseconds=data1['expires_in']),
+        refresh_exp=datetime.datetime.fromtimestamp(data2['exp'])))
+
+@router.get("/mmf/refresh")
+async def mmf_refresh(controller: ControllerDep, ) -> dict:
+    url = "https://auth.myminifactory.com/v1/oauth/tokens"
+    res = httpx.post(
+        url,
+        auth=(settings.mmf_client_id, settings.mmf_client_secret),
+        data={
+            "grant_type": "refresh_token",
+            "refresh_token": refresh,
+        },
+    )
+    return res.json()
+
+@router.get("/mmf/status")
+async def mmf_refresh(controller: ControllerDep, stmt: OneMmfDep) -> MmfModel:
+    return controller.one(MmfModel, stmt)

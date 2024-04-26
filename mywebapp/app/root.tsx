@@ -72,6 +72,16 @@ function SideNav() {
             Activity
           </Link>
         </li>
+        <li>
+          <Link
+            to="/models"
+            className={
+              pathnames[1] === "/models" ? "text-blue-500" : undefined
+            }
+          >
+            Models
+          </Link>
+        </li>
       </ul>
     </nav>
   );

@@ -279,6 +279,7 @@ export const DownloadList = () => (
       <TextField source="id" />
       <ReferenceField reference="assets" source="asset_id" link="show" />
       <TextField source="filename" />
+      <DateField showTime source="downloaded_at" />
     </Datagrid>
   </List>
 );
@@ -289,6 +290,7 @@ export const DownloadShow = () => (
       <TextField source="id" />
       <ReferenceField reference="assets" source="asset_id" link="show" />
       <TextField source="filename" />
+      <DateField showTime source="downloadedAt" />
     </SimpleShowLayout>
   </Show>
 );
