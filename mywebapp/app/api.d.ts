@@ -73,9 +73,9 @@ export interface paths {
     /** Mmf Refresh */
     get: operations["mmf_refresh_api_mmf_refresh_get"];
   };
-  "/api/mmf/inspect": {
+  "/api/mmf/status": {
     /** Mmf Refresh */
-    get: operations["mmf_refresh_api_mmf_inspect_get"];
+    get: operations["mmf_refresh_api_mmf_status_get"];
   };
 }
 
@@ -161,6 +161,25 @@ export interface components {
     IllustrationModel: {
       /** Src */
       src: string;
+    };
+    /** MmfModel */
+    MmfModel: {
+      /** User Id */
+      user_id: number;
+      /** Access Token */
+      access_token: string;
+      /**
+       * Access Exp
+       * Format: date-time
+       */
+      access_exp: string;
+      /** Refresh Token */
+      refresh_token: string;
+      /**
+       * Refresh Exp
+       * Format: date-time
+       */
+      refresh_exp: string;
     };
     /** TagModel */
     TagModel: {
@@ -633,13 +652,15 @@ export interface operations {
       query: {
         code: string;
         state: string;
+        _start?: number | null;
+        _end?: number | null;
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["MmfModel"];
         };
       };
       /** @description Validation Error */
@@ -653,8 +674,9 @@ export interface operations {
   /** Mmf Refresh */
   mmf_refresh_api_mmf_refresh_get: {
     parameters: {
-      query: {
-        refresh: string;
+      query?: {
+        _start?: number | null;
+        _end?: number | null;
       };
     };
     responses: {
@@ -673,18 +695,18 @@ export interface operations {
     };
   };
   /** Mmf Refresh */
-  mmf_refresh_api_mmf_inspect_get: {
+  mmf_refresh_api_mmf_status_get: {
     parameters: {
-      query: {
-        refresh: string;
-        token_type_hint: string;
+      query?: {
+        _start?: number | null;
+        _end?: number | null;
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["MmfModel"];
         };
       };
       /** @description Validation Error */

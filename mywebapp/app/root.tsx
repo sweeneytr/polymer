@@ -12,6 +12,7 @@ import {
 } from "@remix-run/react";
 import stylesheet from "~/tailwind.css";
 import { Upload } from "lucide-react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 export const links: LinksFunction = () => [
   ...(cssBundleHref
@@ -75,11 +76,17 @@ function SideNav() {
         <li>
           <Link
             to="/models"
-            className={
-              pathnames[1] === "/models" ? "text-blue-500" : undefined
-            }
+            className={pathnames[1] === "/models" ? "text-blue-500" : undefined}
           >
             Models
+          </Link>
+        </li>
+        <li>
+          <Link
+            to="/status"
+            className={pathnames[1] === "/status" ? "text-blue-500" : undefined}
+          >
+            Status
           </Link>
         </li>
       </ul>
@@ -95,6 +102,8 @@ function Footer() {
   );
 }
 
+const queryClient = new QueryClient();
+
 export default function App() {
   return (
     <html lang="en" className="h-full">
@@ -105,14 +114,16 @@ export default function App() {
         <Links />
       </head>
       <body className="flex h-full w-full flex-col">
-        <Header />
-        <div className="flex flex-1 flex-row">
-          <SideNav />
-          <div className="flex-1 p-4">
-            <Outlet />
+        <QueryClientProvider client={queryClient}>
+          <Header />
+          <div className="flex flex-1 flex-row">
+            <SideNav />
+            <div className="flex-1 p-4">
+              <Outlet />
+            </div>
           </div>
-        </div>
-        <Footer />
+          <Footer />
+        </QueryClientProvider>
         <ScrollRestoration />
         <Scripts />
         <LiveReload />

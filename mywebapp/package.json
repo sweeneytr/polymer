@@ -7,6 +7,7 @@
     "build": "remix build",
     "dev": "remix dev --manual",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
+    "api": "openapi-typescript http://localhost:8000/openapi.json -o ./app/api.d.ts",
     "start": "remix-serve ./build/index.js",
     "typecheck": "tsc"
   },
@@ -15,6 +16,7 @@
     "@remix-run/node": "^2.8.1",
     "@remix-run/react": "^2.8.1",
     "@remix-run/serve": "^2.8.1",
+    "@tanstack/react-query": "^5.32.0",
     "isbot": "^4.1.0",
     "lucide-react": "^0.354.0",
     "openapi-fetch": "^0.9.3",
