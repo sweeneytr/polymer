@@ -102,3 +102,6 @@ class MmfModel(BaseModel):
     access_exp: datetime.datetime
     refresh_token: str
     refresh_exp: datetime.datetime
+
+class CultsModel(BaseModel):
+    email: str

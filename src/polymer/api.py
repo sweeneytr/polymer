@@ -21,6 +21,7 @@ from .models import (
     AssetModel,
     CategoryCreate,
     CategoryModel,
+    CultsModel,
     DownloadModel,
     MmfModel,
     TagModel,
@@ -28,6 +29,7 @@ from .models import (
     UserModel,
 )
 from .orms import Asset, Category, Download, Tag, User, engine
+from .config import settings
 
 logger = getLogger(__name__)
 
@@ -295,7 +297,7 @@ async def mmf_callback(request: Request, code: str, state: str, controller: Cont
         refresh_exp=datetime.datetime.fromtimestamp(data2['exp'])))
 
 @router.get("/mmf/refresh")
-async def mmf_refresh(controller: ControllerDep, ) -> dict:
+async def mmf_refresh(controller: ControllerDep) -> dict:
     url = "https://auth.myminifactory.com/v1/oauth/tokens"
     res = httpx.post(
         url,
@@ -310,3 +312,7 @@ async def mmf_refresh(controller: ControllerDep, ) -> dict:
 @router.get("/mmf/status")
 async def mmf_refresh(controller: ControllerDep, stmt: OneMmfDep) -> MmfModel:
     return controller.one(MmfModel, stmt)
+
+@router.get("/cults/status")
+async def mmf_refresh() -> CultsModel:
+    return CultsModel(email=settings.email)

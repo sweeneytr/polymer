@@ -77,6 +77,10 @@ export interface paths {
     /** Mmf Refresh */
     get: operations["mmf_refresh_api_mmf_status_get"];
   };
+  "/api/cults/status": {
+    /** Mmf Refresh */
+    get: operations["mmf_refresh_api_cults_status_get"];
+  };
 }
 
 export type webhooks = Record<string, never>;
@@ -137,6 +141,11 @@ export interface components {
       child_ids: number[];
       /** Label */
       label: string;
+    };
+    /** CultsModel */
+    CultsModel: {
+      /** Email */
+      email: string;
     };
     /** DownloadModel */
     DownloadModel: {
@@ -713,6 +722,17 @@ export interface operations {
       422: {
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Mmf Refresh */
+  mmf_refresh_api_cults_status_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["CultsModel"];
         };
       };
     };
