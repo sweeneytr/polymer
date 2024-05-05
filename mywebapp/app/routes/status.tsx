@@ -31,31 +31,40 @@ function CopyChip({ data }: { data: any }) {
 
 function MmfStatus() {
   const { mmf } = useLoaderData<typeof loader>();
+
   return (
     <div className="flex flex-col gap-4 self-start rounded-lg border border-emerald-200 bg-emerald-100 p-2">
       <div className="flex flex-row items-center gap-1">
         <MmfLogo />
         <h1 className="text-xl">MMF Status</h1>
       </div>
-      
-      <div className="flex flex-col">
-        <p>UserId</p>
-        <CopyChip data={mmf.user_id} />
-      </div>
 
-      <div className="flex flex-col">
-        <p>
-          AccessToken - Expires At {new Date(mmf.access_exp).toLocaleString()}
-        </p>
-        <CopyChip data={mmf.access_token} />
-      </div>
+      {!mmf ? (
+        <p>No data</p>
+      ) : (
+        <>
+          <div className="flex flex-col">
+            <p>UserId</p>
+            <CopyChip data={mmf.user_id} />
+          </div>
 
-      <div className="flex flex-col">
-        <p>
-          RefreshToken - Expires At {new Date(mmf.refresh_exp).toLocaleString()}
-        </p>
-        <CopyChip data={mmf.refresh_token} />
-      </div>
+          <div className="flex flex-col">
+            <p>
+              AccessToken - Expires At{" "}
+              {new Date(mmf.access_exp).toLocaleString()}
+            </p>
+            <CopyChip data={mmf.access_token} />
+          </div>
+
+          <div className="flex flex-col">
+            <p>
+              RefreshToken - Expires At{" "}
+              {new Date(mmf.refresh_exp).toLocaleString()}
+            </p>
+            <CopyChip data={mmf.refresh_token} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -69,10 +78,14 @@ function CultsStatus() {
         <h1 className="text-xl">Cults Status</h1>
       </div>
 
-      <div className="flex flex-col">
-        <p>Email</p>
-        <CopyChip data={cults?.email} />
-      </div>
+      {!cults ? (
+        <p>No data</p>
+      ) : (
+        <div className="flex flex-col">
+          <p>Email</p>
+          <CopyChip data={cults?.email} />
+        </div>
+      )}
     </div>
   );
 }

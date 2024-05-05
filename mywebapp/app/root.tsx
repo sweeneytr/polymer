@@ -116,9 +116,9 @@ export default function App() {
       <body className="flex h-full w-full flex-col">
         <QueryClientProvider client={queryClient}>
           <Header />
-          <div className="flex flex-1 flex-row">
+          <div className="flex flex-1 flex-row overflow-auto">
             <SideNav />
-            <div className="flex-1 p-4">
+            <div className="flex-1">
               <Outlet />
             </div>
           </div>
