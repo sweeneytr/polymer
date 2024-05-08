@@ -58,19 +58,16 @@ function ActivityCard({
 }) {
   const { assets } = useLoaderData<typeof loader>();
   const asset = assets.find(({ id }) => id === d.asset_id);
-  const {id} = useParams();
-  
+  const { id } = useParams();
 
-  let className = "flex cursor-pointer gap-4 overflow-hidden rounded-2xl border-2 bg-white shadow-lg hover:border-purple-300 hover:shadow-purple-400";
+  let className =
+    "flex cursor-pointer gap-4 overflow-hidden rounded-2xl border-2 bg-white shadow-lg hover:border-purple-300 hover:shadow-purple-400";
   if (id && d.asset_id === parseInt(id)) {
-    className += " border-purple-300 shadow-purple-400"
+    className += " border-purple-300 shadow-purple-400";
   }
 
   return (
-    <Link
-      className={className}
-      to={`./${d.asset_id}`}
-    >
+    <Link className={className} to={`./${d.asset_id}`}>
       <div className="h-32 w-32 overflow-hidden rounded-r-full border bg-purple-500">
         {asset?.illustration_url ? (
           <img
@@ -86,14 +83,14 @@ function ActivityCard({
         <div className="flex flex-row items-center gap-4 text-xl font-medium  text-black">
           <div className="shrink-0">
             {d.source === "cults3d" ? CultsLogo : MmfLogo}
-          </div>{asset?.name}
+          </div>
+          <span className="max-w-xs">{asset?.name}</span>
         </div>
 
         <p className="text-slate-400">{asset?.creator}</p>
         <p className="text-slate-400">
           {new Date(d.downloaded_at).toLocaleString()}
         </p>
-
       </div>
     </Link>
   );
@@ -102,11 +99,16 @@ function ActivityCard({
 export default function Activity() {
   const { downloads } = useLoaderData<typeof loader>();
   return (
-    <div className="flex h-full flex-row flex-wrap content-start gap-2 overflow-auto p-4">
+    <div className="flex h-full flex-col gap-2 p-4">
+      <input placeholder="Search" className="mr-6 rounded-xl p-2" />
+
+      <div className="flex h-full flex-row flex-wrap content-start gap-2 overflow-auto p-4">
+        {downloads.map((d) => (
+          <ActivityCard d={{ source: "cults3d", ...d }} />
+        ))}
+      </div>
+
       <Outlet />
-      {downloads.map((d) => (
-        <ActivityCard d={{ source: "cults3d", ...d }} />
-      ))}
     </div>
   );
 }

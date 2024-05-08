@@ -50,9 +50,12 @@ export default function Page() {
       <div className="fixed inset-0 bg-black/25" aria-hidden="true" />
 
       <div className="fixed inset-0 flex items-center justify-center">
-        <Dialog.Panel className="max-w-3xl rounded-2xl bg-white p-6 shadow-xl overflow-y-auto max-h-2xl justify-center flex flex-col gap-4">
+        <Dialog.Panel className="max-h-full flex max-w-3xl flex-col gap-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
           <div className="flex flex-row items-center gap-2">
-            <img src={illustration_url} className="h-40 rounded-xl border shadow-sm" />
+            <img
+              src={illustration_url}
+              className="h-40 rounded-xl border shadow-sm"
+            />
             <div className="flex flex-col">
               <Dialog.Title className="text-2xl">{name}</Dialog.Title>
               <div className="flex flex-row items-center gap-2">
@@ -66,23 +69,33 @@ export default function Page() {
               </div>
             </div>
           </div>
-          <Dialog.Description>{description}</Dialog.Description>
+
+          <hr className="h-0.5 bg-neutral-100 dark:bg-white/10" />
+
+          <Dialog.Description >{description}</Dialog.Description>
 
           <hr className="h-0.5 bg-neutral-100 dark:bg-white/10" />
 
           <table className="border-separate border-spacing-x-4 self-center">
             <thead>
-                <tr>
-                    <th>Version</th>
-                    <th>Downloaded At</th>
-                </tr>
+              <tr>
+                <th>Version</th>
+                <th>Downloaded At</th>
+              </tr>
             </thead>
             <tbody>
               {downloads.map(({ downloaded_at, id }, idx) => (
                 <tr>
-                    <td>{idx + 1}</td>
+                  <td>{idx + 1}</td>
                   <td>{new Date(downloaded_at).toLocaleString()}</td>
-                  <td><a href={`http://localhost:8000/api/downloads/${id}/download`} className="hover:text-blue-500"><Download/></a></td>
+                  <td>
+                    <a
+                      href={`http://localhost:8000/api/downloads/${id}/download`}
+                      className="hover:text-blue-500"
+                    >
+                      <Download />
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>
