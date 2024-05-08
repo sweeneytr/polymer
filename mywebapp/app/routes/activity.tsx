@@ -1,4 +1,4 @@
-import { json, useLoaderData } from "@remix-run/react";
+import { Link, Outlet, json, useLoaderData, useParams } from "@remix-run/react";
 import { client } from "~/client";
 
 interface Activity {
@@ -58,28 +58,44 @@ function ActivityCard({
 }) {
   const { assets } = useLoaderData<typeof loader>();
   const asset = assets.find(({ id }) => id === d.asset_id);
+  const {id} = useParams();
+  
+
+  let className = "flex cursor-pointer gap-4 overflow-hidden rounded-2xl border-2 bg-white shadow-lg hover:border-purple-300 hover:shadow-purple-400";
+  if (id && d.asset_id === parseInt(id)) {
+    className += " border-purple-300 shadow-purple-400"
+  }
 
   return (
-    <div className="flex rounded-xl bg-white p-6 shadow-lg border gap-4">
-      <img
-        src={asset?.illustration_url}
-        className="h-32 w-32 rounded-full bg-purple-500"
-      />
-      <div>
-        <div className="flex flex-row items-center text-xl font-medium gap-4  text-black">
+    <Link
+      className={className}
+      to={`./${d.asset_id}`}
+    >
+      <div className="h-32 w-32 overflow-hidden rounded-r-full border bg-purple-500">
+        {asset?.illustration_url ? (
+          <img
+            src={asset.illustration_url}
+            alt="Asset Illustration"
+            className="h-full w-full"
+          />
+        ) : (
+          <></>
+        )}
+      </div>
+      <div className="py-4 pr-4">
+        <div className="flex flex-row items-center gap-4 text-xl font-medium  text-black">
           <div className="shrink-0">
             {d.source === "cults3d" ? CultsLogo : MmfLogo}
-          </div>
-          Download
+          </div>{asset?.name}
         </div>
 
+        <p className="text-slate-400">{asset?.creator}</p>
         <p className="text-slate-400">
           {new Date(d.downloaded_at).toLocaleString()}
         </p>
 
-        <p className="text-slate-400">{asset?.name}</p>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -87,6 +103,7 @@ export default function Activity() {
   const { downloads } = useLoaderData<typeof loader>();
   return (
     <div className="flex h-full flex-row flex-wrap content-start gap-2 overflow-auto p-4">
+      <Outlet />
       {downloads.map((d) => (
         <ActivityCard d={{ source: "cults3d", ...d }} />
       ))}

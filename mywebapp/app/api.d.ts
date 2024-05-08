@@ -25,6 +25,10 @@ export interface paths {
     /** Get Download */
     get: operations["get_download_api_downloads__id__get"];
   };
+  "/api/downloads/{id}/download": {
+    /** Get Download */
+    get: operations["get_download_api_downloads__id__download_get"];
+  };
   "/api/tags": {
     /** Tag List */
     get: operations["tag_list_api_tags_get"];
@@ -370,6 +374,32 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["DownloadModel"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get Download */
+  get_download_api_downloads__id__download_get: {
+    parameters: {
+      query?: {
+        _start?: number | null;
+        _end?: number | null;
+      };
+      path: {
+        id: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
