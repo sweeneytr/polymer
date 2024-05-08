@@ -12,7 +12,12 @@ interface Activity {
 export const loader = async () => {
   const res = client.GET("/api/mmf/status");
   const res2 = client.GET("/api/cults/status");
-  return json({ mmf: (await res).data, cults: (await res2).data });
+  const res3 = client.GET("/api/tasks");
+  return json({
+    mmf: (await res).data,
+    cults: (await res2).data,
+    tasks: (await res3).data,
+  });
 };
 
 function CopyChip({ data }: { data: any }) {
@@ -70,7 +75,7 @@ function MmfStatus() {
 }
 
 function CultsStatus() {
-  const { cults } = useLoaderData<typeof loader>();
+  const { cults, tasks } = useLoaderData<typeof loader>();
   return (
     <div className="flex flex-col gap-4 self-start rounded-lg  border border-purple-200 bg-purple-100 p-2">
       <div className="flex flex-row items-center gap-1">
@@ -86,13 +91,34 @@ function CultsStatus() {
           <CopyChip data={cults?.email} />
         </div>
       )}
+
+      <table className=" border-separate border-spacing-x-4">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Last Ran At</th>
+            <th>Last Run Duration</th>
+            <th>Cron Pattern</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tasks?.map(({ name, last_run_at, last_duration, cron }) => (
+            <tr>
+              <td>{name}</td>
+              <td>{new Date(last_run_at).toLocaleString()}</td>
+              <td>{Math.round(last_duration * 1000) / 1000} Seconds</td>
+              <td>{cron}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 export default function Activity() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-4 overflow-auto h-full">
       <MmfStatus />
       <CultsStatus />
     </div>
