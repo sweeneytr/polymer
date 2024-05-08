@@ -165,6 +165,17 @@ async def get_download(
 ) -> DownloadModel:
     return controller.one(DownloadModel, stmt)
 
+@router.get("/downloads/{id}/download")
+async def get_download(
+    controller: ControllerDep, stmt: OneDownloadDep
+) -> FileResponse:
+    orm = controller.db.one(stmt)
+
+    path = Path(settings.download_dir, orm.asset.slug)
+    filepath = next(path.iterdir())
+
+    return FileResponse(filepath, filename=filepath.name)
+
 
 @router.get("/tags")
 async def tag_list(controller: ControllerDep, stmt: AllTagsDep) -> list[TagModel]:
