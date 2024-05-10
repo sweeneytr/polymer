@@ -75,14 +75,6 @@ function SideNav() {
         </li>
         <li>
           <Link
-            to="/models"
-            className={pathnames[1] === "/models" ? "text-blue-500" : undefined}
-          >
-            Models
-          </Link>
-        </li>
-        <li>
-          <Link
             to="/status"
             className={pathnames[1] === "/status" ? "text-blue-500" : undefined}
           >

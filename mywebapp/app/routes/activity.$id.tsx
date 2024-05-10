@@ -56,7 +56,7 @@ export default function Page() {
               src={illustration_url}
               className="h-40 rounded-xl border shadow-sm"
             />
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-2">
               <Dialog.Title className="text-2xl">{name}</Dialog.Title>
               <div className="flex flex-row items-center gap-2">
                 <CultsLogo />
